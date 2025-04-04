@@ -17,8 +17,8 @@ export const Navbar = () => {
 
   const menuItems = [
     { name: "संपादकीय | साक्षात्कार", link: "/sampadkiye", icon: <FaInfoCircle className="mr-2" /> },
-    { name: "पॉडकास्ट", link: "#contact", icon: <FaPodcast className="mr-2" /> },
-    { name: "डॉक्यूमेंट्री", link: "#services", icon: <GrDocumentSound className='mr-2'/> }
+    { name: "पॉडकास्ट", link: "/podcast", icon: <FaPodcast className="mr-2" /> },
+    { name: "डॉक्यूमेंट्री", link: "/documentary", icon: <GrDocumentSound className='mr-2'/> }
   ];
 
   const menuItems1 = [
@@ -105,14 +105,14 @@ export const Navbar = () => {
             
             <div className="flex space-x-2 lg:space-x-6">
               {menuItems.map((item, index) => (
-                <a
+                <Link
                   key={index}
-                  href={item.link}
+                  to={item.link}
                   className="flex items-center px-2 py-1.5 md:px-3 md:py-2 text-sm md:text-lg font-medium text-gray-700 hover:text-blue-500 transition-colors duration-200"
                 >
                   {item.icon}
                   <span className="hidden lg:inline">{item.name}</span>
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -163,14 +163,14 @@ export const Navbar = () => {
           </div>
           
           {menuItems.map((item, index) => (
-            <a
+            <Link
               key={index}
-              href={item.link}
+              to={item.link}
               className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-500 hover:bg-gray-50"
             >
               {item.icon}
               {item.name}
-            </a>
+            </Link>
           ))}
           
           <div className="flex space-x-4 px-3 py-2 border-t border-gray-200 mt-2">

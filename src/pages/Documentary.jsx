@@ -1,7 +1,10 @@
 import React from 'react'
+import { DocumentaryPage } from '../components/Documentary/DocumentaryPage'
 
 export const Documentary = () => {
   return (
-    <div>Documentary</div>
+    <div>
+      <DocumentaryPage/>
+    </div>
   )
 }

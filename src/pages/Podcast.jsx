@@ -1,7 +1,10 @@
 import React from 'react'
+import { PodcastPage } from '../components/podcast/PodcastPage'
 
 export const Podcast = () => {
   return (
-    <div>Podcast</div>
+    <div>
+      <PodcastPage/>
+    </div>
   )
 }
