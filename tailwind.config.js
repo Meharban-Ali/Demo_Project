@@ -9,7 +9,16 @@ export default {
       fontFamily: {
         poppins: ['Poppins', 'sans-serif'],
         sans: ['Inter', 'Arial', 'sans-serif'] // or your preferred sans-serif
-      }
+      },
+      animation: {
+        marquee: 'marquee 5s linear infinite',
+      },
+      keyframes: {
+        marquee: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100vw)' },
+        },
+      },
     },
   },
   plugins: [],

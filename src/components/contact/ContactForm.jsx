@@ -112,7 +112,7 @@ export const ContactForm = () => {
 
       {/* Simple Contact Info */}
       <div className="mt-8 text-center text-sm text-gray-600">
-        <p>Or reach us directly at: <a href="mailto:contact@example.com" className="text-blue-600 hover:underline">jahidsaifi786@gmail.com</a></p>
+        <p>Or reach us directly at: <a href="mailto:contact@example.com" className="text-blue-600 hover:underline">meharban786@gmail.com</a></p>
       </div>
     </div>
   )
