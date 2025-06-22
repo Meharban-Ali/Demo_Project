@@ -112,7 +112,7 @@ export const Sampad_Page = () => {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4 flex items-center justify-center">
             <GiNewspaper className="mr-3 text-blue-600" />
-            संपादकीय | साक्षात्कार
+            लेख  | इंटरव्यू 
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             विशेषज्ञों की राय, गहन विश्लेषण और प्रमुख हस्तियों के साथ विस्तृत बातचीत
@@ -127,14 +127,14 @@ export const Sampad_Page = () => {
               className={`py-2 px-4 font-medium text-lg flex items-center ${activeTab === 'editorial' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
             >
               <FaInfoCircle className="mr-2" />
-              संपादकीय
+              लेख
             </button>
             <button
               onClick={() => setActiveTab('interviews')}
               className={`py-2 px-4 font-medium text-lg flex items-center ${activeTab === 'interviews' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
             >
               <FaUserEdit className="mr-2" />
-              साक्षात्कार
+              इंटरव्यू 
             </button>
           </div>
           

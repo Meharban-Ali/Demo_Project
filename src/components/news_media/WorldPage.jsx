@@ -133,7 +133,7 @@ export const WorldPage = () => {
         <div className="breaking-news bg-red-600 text-white py-2 px-4 mb-6 rounded-md shadow-lg">
           <div className="flex items-center">
             <span className="font-bold mr-3 flex items-center">
-              <FaFire className="mr-1" /> ब्रेकिंग न्यूज़:
+              <FaFire className="mr-1" /> ताज़ा खबरें:
             </span>
             <div className="ticker-content overflow-hidden whitespace-nowrap">
               <div className="inline-block animate-marquee">
@@ -163,7 +163,7 @@ export const WorldPage = () => {
                 </span>
                 {news.isBreaking && (
                   <span className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 text-xs rounded-full shadow-md flex items-center">
-                    <FaFire className="mr-1" /> ब्रेकिंग
+                    <FaFire className="mr-1" /> ताज़ा खबरें
                   </span>
                 )}
               </div>

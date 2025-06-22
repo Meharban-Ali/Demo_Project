@@ -128,7 +128,7 @@ export const EntertainmentPage = () => {
         {/* Breaking news ticker */}
         <div className="breaking-news bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 px-4 mb-6 rounded-md shadow-lg animate-pulse">
           <div className="flex items-center">
-            <span className="font-bold mr-3">ब्रेकिंग न्यूज़:</span>
+            <span className="font-bold mr-3">ताज़ा खबरें:</span>
             <div className="ticker-content overflow-hidden whitespace-nowrap">
               <div className="inline-block animate-marquee">
                 <span className="mx-4">• शाहरुख खान की 'दुनकी' ने 200 करोड़ का कलेक्शन किया</span>

@@ -134,7 +134,7 @@ export const LifestylePage = () => {
         {/* Breaking news ticker */}
         <div className="breaking-news bg-gradient-to-r from-green-600 to-teal-600 text-white py-2 px-4 mb-6 rounded-md shadow-lg animate-pulse">
           <div className="flex items-center">
-            <span className="font-bold mr-3">ब्रेकिंग न्यूज़:</span>
+            <span className="font-bold mr-3">ताज़ा खबरें:</span>
             <div className="ticker-content overflow-hidden whitespace-nowrap">
               <div className="inline-block animate-marquee">
                 <span className="mx-4">• योग से तनाव में 40% तक की कमी - नया शोध</span>

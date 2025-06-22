@@ -259,7 +259,7 @@ export const DocumentaryPage = () => {
               हमसे संपर्क करें
             </button>
             <button className="border border-white text-white hover:bg-white hover:text-purple-800 px-6 py-3 rounded-full font-semibold">
-              वर्कशॉप देखें
+              और  देखें
             </button>
           </div>
         </div>

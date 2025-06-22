@@ -217,20 +217,6 @@ export const PodcastPage = () => {
               सब्सक्राइब करें
             </button>
           </div>
-          <div className="flex justify-center space-x-6 mt-8">
-            <a href="#" className="bg-white/10 hover:bg-white/20 p-3 rounded-full">
-              <img src="https://cdn-icons-png.flaticon.com/512/2504/2504903.png" alt="Spotify" className="h-6 w-6" />
-            </a>
-            <a href="#" className="bg-white/10 hover:bg-white/20 p-3 rounded-full">
-              <img src="https://cdn-icons-png.flaticon.com/512/731/731526.png" alt="Google Podcasts" className="h-6 w-6" />
-            </a>
-            <a href="#" className="bg-white/10 hover:bg-white/20 p-3 rounded-full">
-              <img src="https://cdn-icons-png.flaticon.com/512/731/731585.png" alt="Apple Podcasts" className="h-6 w-6" />
-            </a>
-            <a href="#" className="bg-white/10 hover:bg-white/20 p-3 rounded-full">
-              <img src="https://cdn-icons-png.flaticon.com/512/2504/2504929.png" alt="Amazon Music" className="h-6 w-6" />
-            </a>
-          </div>
         </div>
       </div>
     </div>

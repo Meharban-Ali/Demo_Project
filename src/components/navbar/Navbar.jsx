@@ -8,31 +8,34 @@ import { PiBookOpenUser } from "react-icons/pi";
 import { FaLandmarkDome, FaBusinessTime, FaEarthAsia, FaDna } from "react-icons/fa6";
 import { BsTrophyFill} from "react-icons/bs";
 import { BiSolidCarMechanic } from "react-icons/bi";
-import { RiSeedlingFill,RiRobot3Fill } from "react-icons/ri";
+import { RiSeedlingFill,RiRobot3Fill, RiAdminFill } from "react-icons/ri";
 import { Link } from 'react-router-dom';
+import { TiNews } from "react-icons/ti";
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
-  const [isNewsOpen, setIsNewsOpen] = useState(false); // New state for news dropdown
+  const [isNewsHovered, setIsNewsHovered] = useState(false); // For desktop hover
+  const [isNewsClicked, setIsNewsClicked] = useState(false); // For mobile click
 
   const menuItems = [
-    { name: "संपादकीय | साक्षात्कार", link: "/sampadkiye", icon: <FaInfoCircle className="mr-2" /> },
+    { name: "लेख  | इंटरव्यू ", link: "/sampadkiye", icon: <FaInfoCircle className="mr-2" /> },
     { name: "पॉडकास्ट", link: "/podcast", icon: <FaPodcast className="mr-2" /> },
     { name: "डॉक्यूमेंट्री", link: "/documentary", icon: <GrDocumentSound className='mr-2'/> }
   ];
 
   const menuItems1 = [
+    { icon: <TiNews />, text: "न्यूज़", path: "/news" },
     { icon: <PiBookOpenUser />, text: "राज्य", path: "/state" },
     { icon: <FaLandmarkDome />, text: "राजनीति", path: "/politics" },
-    { icon: <FaBusinessTime />, text: "बिज़नेस", path: "/business" },
     { icon: <FaEarthAsia />, text: "देश | दुनिया", path: "/world" },
     { icon: <BsTrophyFill />, text: "खेल", path: "/sports" },
     { icon: <GiClapperboard />, text: "एंटरटेनमेंट", path: "/entertainment" },
     { icon: <FaDna />, text: "लाइफस्टाइल", path: "/lifestyle" },
     { icon: <RiRobot3Fill />, text: "विज्ञान | तकनीक ", path: "/science" },
     { icon: <BiSolidCarMechanic />, text: "ऑटोमोबाइल", path: "/automobile" },
-    { icon: <RiSeedlingFill />, text: "पर्यावरण", path: "/environment" } 
+    { icon: <RiSeedlingFill />, text: "पर्यावरण", path: "/environment" },
+    { icon: <FaBusinessTime />, text: "बिज़नेस", path: "/business" }, 
   ];
 
   useEffect(() => {
@@ -41,10 +44,7 @@ export const Navbar = () => {
     const handleScroll = () => {
       setIsScrolling(true);
       
-      // Clear the previous timeout
       clearTimeout(scrollTimeout);
-      
-      // Set a new timeout
       scrollTimeout = setTimeout(() => {
         setIsScrolling(false);
       }, 100);
@@ -60,22 +60,16 @@ export const Navbar = () => {
 
   const closeAllMenus = () => {
     setIsOpen(false);
-    setIsNewsOpen(false);
+    setIsNewsClicked(false);
+    setIsNewsHovered(false);
   };
 
   return (
     <nav className={`bg-white sticky top-0 z-50 shadow-md transition-transform duration-200 ${isScrolling ? '-translate-y-2' : 'translate-y-0'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 md:h-24 items-center">
-          {/* Left side - Logo and Mobile Menu Button */}
+          {/* Left side - Logo */}
           <div className="flex items-center">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100 focus:outline-none md:hidden mr-2"
-            >
-              {isOpen ? <XMarkIcon className="h-6 w-6" /> : <Bars3Icon className="h-6 w-6" />}
-            </button>
-            
             <div className="flex-shrink-0 flex items-center">
               <Link to="/" onClick={closeAllMenus}>
                 <img
@@ -93,12 +87,18 @@ export const Navbar = () => {
               <MdHome className="mr-1 md:mr-2" />होम 
             </Link>
             
-            <div className="group relative">
+            <div 
+              className="group relative"
+              onMouseEnter={() => setIsNewsHovered(true)}
+              onMouseLeave={() => setIsNewsHovered(false)}
+            >
               <button className="flex items-center px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-lg font-medium text-gray-700 hover:text-blue-500">
                 <GiNewspaper className="mr-1 md:mr-2" /> न्यूज़ | मीडिया
               </button>
               
-              <div className="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10 border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
+              <div 
+                className={`absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10 border border-gray-200 transition-all duration-300 ${isNewsHovered ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+              >
                 {menuItems1.map((item, index) => (
                   <Link
                     key={index}
@@ -128,7 +128,7 @@ export const Navbar = () => {
             </div>
           </div>
 
-          {/* Right side - Icons */}
+          {/* Right side - Icons and Mobile Menu Button */}
           <div className="flex items-center space-x-2 md:space-x-4">
             <Link to="/search" className="p-1.5 md:p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600" onClick={closeAllMenus}>
               <MagnifyingGlassIcon className="h-4 w-4 md:h-5 md:w-5" />
@@ -139,10 +139,18 @@ export const Navbar = () => {
                 <MdPermContactCalendar className="h-5 w-5" />
               </Link>
 
-              <Link to="/newsletter" className="p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600" onClick={closeAllMenus}>
-                <NewspaperIcon className="h-5 w-5" />
+              <Link to="/login" className="p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600" onClick={closeAllMenus}>
+                <RiAdminFill className="h-5 w-5" />
               </Link>
             </div>
+            
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100 focus:outline-none md:hidden"
+            >
+              {isOpen ? <XMarkIcon className="h-6 w-6" /> : <Bars3Icon className="h-6 w-6" />}
+            </button>
           </div>
         </div>
       </div>
@@ -160,13 +168,24 @@ export const Navbar = () => {
           
           <div className="pt-1">
             <button 
-              className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-500 hover:bg-gray-50 w-full"
-              onClick={() => setIsNewsOpen(!isNewsOpen)}
+              className="flex items-center justify-between w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-500 hover:bg-gray-50"
+              onClick={() => setIsNewsClicked(!isNewsClicked)}
             >
-              <GiNewspaper className="mr-2" /> न्यूज़ | मीडिया
+              <span className="flex items-center">
+                <GiNewspaper className="mr-2" /> न्यूज़ | मीडिया
+              </span>
+              <svg 
+                className={`w-4 h-4 transition-transform ${isNewsClicked ? 'rotate-180' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24" 
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
             </button>
             
-            <div className={`pl-4 mt-1 space-y-1 ${isNewsOpen ? 'block' : 'hidden'}`}>
+            <div className={`pl-4 mt-1 space-y-1 ${isNewsClicked ? 'block' : 'hidden'}`}>
               {menuItems1.map((item, index) => (
                 <Link
                   key={index}
@@ -194,11 +213,11 @@ export const Navbar = () => {
           ))}
           
           <div className="flex space-x-4 px-3 py-2 border-t border-gray-200 mt-2">
-            <Link to="/contact" className="p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600" onClick={closeAllMenus}>
-              <EnvelopeIcon className="h-5 w-5" />
+            <Link to="/contact" className="flex items-center justify-center p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600" onClick={closeAllMenus}>
+              <MdPermContactCalendar className="h-5 w-5" />
             </Link>
-            <Link to="/newsletter" className="p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600" onClick={closeAllMenus}>
-              <NewspaperIcon className="h-5 w-5" />
+            <Link to="/login" className="flex items-center justify-center p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600" onClick={closeAllMenus}>
+              <RiAdminFill className="h-5 w-5" />
             </Link>
           </div>
         </div>

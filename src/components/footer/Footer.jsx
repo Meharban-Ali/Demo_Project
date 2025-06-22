@@ -1,147 +1,137 @@
-import React from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FaFacebook, FaTwitter, FaInstagram, FaLinkedin, FaPhone, FaEnvelope, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaFacebookF, FaTwitter, FaInstagram, FaYoutube, FaLinkedinIn, FaTelegram } from 'react-icons/fa';
 
 export const Footer = () => {
+  const [showMore, setShowMore] = useState(false);
+
+  const toggleReadMore = () => {
+    setShowMore(!showMore);
+  };
+
   return (
-    <footer className="bg-gray-900 text-white font-poppins">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          
-          {/* Company Info */}
-          <div className="space-y-6">
-            <div className="flex items-center">
-              <Link to="/">
-                <img 
-                  src="https://res.cloudinary.com/dh3os5xi2/image/upload/v1742932493/Web_Logo_Black_r0dxzn.png" 
-                  alt="Logo" 
-                  className="h-10 w-auto filter brightness-0 invert transition-transform hover:scale-105"
-                />
-              </Link>
-              <span className="ml-2 text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
-                YourBrand
-              </span>
-            </div>
-            <p className="text-gray-300 text-sm leading-relaxed">
-            आज की तेज़ भागदौड़ भरी दुनिया में हर खबर, हर जानकारी मायने रखती है। हम आपको देश-विदेश, राजनीति, मनोरंजन, खेल, टेक्नोलॉजी, शिक्षा, बिजनेस और लाइफस्टाइल से जुड़ी हर जरूरी खबर सही, साफ और दिलचस्प अंदाज में पेश करते हैं। हमारा मकसद सिर्फ खबरें देना नहीं, बल्कि उनकी गहराई में जाकर आपको हर पहलू से जागरूक करना भी है।
+    <footer className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* Logo and Description */}
+          <div className="footer-widget">
+            <Link to="/">
+              <img 
+                src="https://res.cloudinary.com/dh3os5xi2/image/upload/v1742932493/Web_Logo_Black_r0dxzn.png" 
+                className="logo h-12 mb-4 dark:invert" 
+                alt="Raviopedia Logo"
+              />
+            </Link>
+            <p className="desc text-sm mb-4">
+              आज की तेज़ भागदौड़ भरी दुनिया में हर खबर, हर जानकारी मायने रखती है। हम आपको देश-विदेश, राजनीति, मनोरंजन, खेल, टेक्नोलॉजी, शिक्षा, बिजनेस और लाइफस्टाइल से जुड़ी हर जरूरी खबर सही, साफ और दिलचस्प अंदाज में पेश करते हैं। हमारा मकसद सिर्फ खबरें देना नहीं, बल्कि उनकी गहराई में जाकर आपको हर पहलू से जागरूक करना भी है। 
+              {showMore && (
+                <span id="more" className="block mt-2">
+                  चुनाव, अर्थव्यवस्था, खेती-किसानी और बिजनेस से लेकर अपराध की चौंकाने वाली खबरों तक, हम हर क्षेत्र पर पैनी नजर रखते हैं। वहीं, खेल की दुनिया की लाइव खबरें, बॉलीवुड-हॉलीवुड और ओटीटी प्लेटफार्म से जुड़ी ताजा जानकारी, फिल्म समीक्षाएं और टेलीविजन जगत की हलचल भी आपको यहां मिलेगी।
+
+                  हमारी खास रिपोर्टिंग में जमीनी सच्चाई दिखाने वाली ग्राउंड रिपोर्ट, आसान भाषा में समझाने वाले एक्सप्लेनर, खास लोगों के इंटरव्यू और विचारों को सामने रखने वाले संपादकीय शामिल हैं। डॉक्यूमेंट्री और पॉडकास्ट शो के जरिए हम आपको उन मुद्दों से जोड़ते हैं जो आपके जीवन पर असर डालते हैं। धर्म, राशिफल, सेहत, रिश्ते, घूमने-फिरने, खाना-पीना, फैशन और घर से जुड़े खास टिप्स भी आपको यहां मिलेंगे, जो आपकी रोजमर्रा की जिंदगी को आसान बनाएंगे।
+
+                  हम पर्यावरण, कला-संस्कृति, ऐतिहासिक जगहों और स्मारकों की कहानियां भी आपके सामने लाते हैं, ताकि आप देश-दुनिया की धरोहरों और परंपराओं को करीब से जान सकें। मौसम के बदलते हालात से लेकर राज्यों और शहरों की जमीनी हकीकत तक, हम हर जरूरी खबर आप तक पहुंचाते हैं।
+
+                  हमारी कोशिश है कि आपको सबसे तेज, भरोसेमंद और दिलचस्प खबरें दें। इसलिए, हम आपके लिए वीकली रिपोर्ट, न्यूजलेटर, वीडियो-पॉडकास्ट और ऑडियो-पॉडकास्ट लेकर आते हैं, ताकि आप हर खबर से जुड़े रहें।
+
+                  हर खबर, हर जानकारी—आपके लिए, आपके साथ।
+                </span>
+              )}
+              <button 
+                onClick={toggleReadMore}
+                className="text-blue-600 dark:text-blue-400 hover:underline mt-2 focus:outline-none"
+              >
+                {showMore ? 'Read less' : 'Read more'}
+              </button>
             </p>
-            <div className="flex space-x-4">
-              <Link to="#" className="text-gray-400 hover:text-blue-500 transition-colors duration-300">
-                <FaFacebook className="h-5 w-5" />
-              </Link>
-              <Link to="#" className="text-gray-400 hover:text-sky-400 transition-colors duration-300">
-                <FaTwitter className="h-5 w-5" />
-              </Link>
-              <Link to="#" className="text-gray-400 hover:text-pink-600 transition-colors duration-300">
-                <FaInstagram className="h-5 w-5" />
-              </Link>
-              <Link to="#" className="text-gray-400 hover:text-blue-600 transition-colors duration-300">
-                <FaLinkedin className="h-5 w-5" />
-              </Link>
-            </div>
+            <ul className="socials flex space-x-4">
+              <li>
+                <Link to="https://www.facebook.com/raviopedia" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-all hover:scale-125">
+                  <FaFacebookF className="w-5 h-5" />
+                </Link>
+              </li>
+              <li>
+                <Link to="https://x.com/raviopedia" className="text-gray-700 dark:text-gray-300 hover:text-blue-400 dark:hover:text-blue-400 transition-all hover:scale-125">
+                  <FaTwitter className="w-5 h-5" />
+                </Link>
+              </li>
+              <li>
+                <Link to="https://www.instagram.com/raviopedia
+                  " className="text-gray-700 dark:text-gray-300 hover:text-pink-600 dark:hover:text-pink-400 transition-all hover:scale-125">
+                  <FaInstagram className="w-5 h-5" />
+                </Link>
+              </li>
+              <li>
+                <Link to="https://youtube.com/@raviopedia
+                      " className="text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-all hover:scale-125">
+                  <FaYoutube className="w-5 h-5" />
+                </Link>
+              </li>
+              <li>
+                <Link to="https://www.linkedin.com/company/raviopedia" className="text-gray-700 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-500 transition-all hover:scale-125">
+                  <FaLinkedinIn className="w-5 h-5" />
+                </Link>
+              </li>
+              <li>
+                <Link to="https://t.me/raviopedia
+                  " className="text-gray-700 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-400 transition-all hover:scale-125">
+                  <FaTelegram className="w-5 h-5" />
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Category Links with Hindi headings but English links */}
+          <div className="footer-widget">
+            <h6 className="text-lg font-semibold mb-4">Category</h6>
+            <ul className="links space-y-2">
+              <li><Link to="/news" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">News</Link></li>
+              <li><Link to="/state" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">State</Link></li>
+              <li><Link to="/politics" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Politics</Link></li>
+              <li><Link to="/world" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Country | World</Link></li>
+              <li><Link to="/sports" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Sports</Link></li>
+              <li><Link to="/entertainment" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Entertainment</Link></li>
+              <li><Link to="/lifestyle" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Lifestyle</Link></li>
+              <li><Link to="/science" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Science | Technology</Link></li>
+              <li><Link to="/automobile" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Automobile</Link></li>
+              <li><Link to="/environment" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Environment</Link></li>
+            </ul>
+          </div>
+
+          {/* Tag Links */}
+          <div className="footer-widget">
+            <h6 className="text-lg font-semibold mb-4">Tag</h6>
+            <ul className="links space-y-2">
+              <li><Link to="https://www.eci.gov.in" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Election</Link></li>
+              <li><Link to="https://bikanervala.com/?srsltid=AfmBOopNIqpv4Y1NYX2kyqqMH-EwRhNsa4Ytm2NgcFmDuiYWbZkwSz9Z" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Food</Link></li>
+              <li><Link to="https://www.verywellfit.com/internet-fitness-and-health-information-1231194" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Health</Link></li>
+              <li><Link to="https://delhi.gov.in/page/about-us" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">State</Link></li>
+              <li><Link to="https://www.mca.gov.in/content/mca/global/en/home.html" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Corporate</Link></li>
+            </ul>
           </div>
 
           {/* Quick Links */}
-          <div>
-            <h3 className="text-lg font-semibold mb-6 pb-2 border-b border-gray-700 inline-block">त्वरित लिंक</h3>
-            <ul className="space-y-3">
-              <li>
-                <Link to="/" className="text-gray-300 hover:text-white flex items-center transition-colors duration-300">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                  होम
-                </Link>
-              </li>
-              <li>
-                <Link to="/about" className="text-gray-300 hover:text-white flex items-center transition-colors duration-300">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                  हमारे बारे में
-                </Link>
-              </li>
-              <li>
-                <Link to="/services" className="text-gray-300 hover:text-white flex items-center transition-colors duration-300">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                  सेवाएं
-                </Link>
-              </li>
-              <li>
-                <Link to="/contact" className="text-gray-300 hover:text-white flex items-center transition-colors duration-300">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                  संपर्क करें
-                </Link>
-              </li>
+          <div className="footer-widget">
+            <h6 className="text-lg font-semibold mb-4">Quick Link</h6>
+            <ul className="links space-y-2">
+              <li><Link to="/" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Home</Link></li>
+              <li><Link to="/about" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">About Us</Link></li>
+              <li><Link to="/contact/ContactForm" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Contact</Link></li>
+              <li><Link to="/terms" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Terms & Condition</Link></li>
+              <li><Link to="/privacy" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Privacy</Link></li>
+              <li><Link to="/notfound" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">404 Pages</Link></li>
+              <li><Link to="/team" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">My Team</Link></li>
+              <li><Link to="/feedback" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Feedback</Link></li>
             </ul>
-          </div>
-
-          {/* Services */}
-          <div>
-            <h3 className="text-lg font-semibold mb-6 pb-2 border-b border-gray-700 inline-block">सेवाएं</h3>
-            <ul className="space-y-3">
-              <li>
-                <Link to="/services/web-design" className="text-gray-300 hover:text-white flex items-center transition-colors duration-300">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
-                  वेब डिज़ाइन
-                </Link>
-              </li>
-              <li>
-                <Link to="/services/app-development" className="text-gray-300 hover:text-white flex items-center transition-colors duration-300">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
-                  ऐप डेवलपमेंट
-                </Link>
-              </li>
-              <li>
-                <Link to="/services/digital-marketing" className="text-gray-300 hover:text-white flex items-center transition-colors duration-300">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
-                  डिजिटल मार्केटिंग
-                </Link>
-              </li>
-              <li>
-                <Link to="/services/seo" className="text-gray-300 hover:text-white flex items-center transition-colors duration-300">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
-                  SEO
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Contact */}
-          <div>
-            <h3 className="text-lg font-semibold mb-6 pb-2 border-b border-gray-700 inline-block">संपर्क</h3>
-            <address className="text-gray-300 not-italic space-y-3">
-              <div className="flex items-start">
-                <FaMapMarkerAlt className="mt-1 mr-3 text-blue-400 flex-shrink-0" />
-                <p>123 बिजनेस सेंटर, मुंबई, भारत 400001</p>
-              </div>
-              <div className="flex items-center">
-                <FaPhone className="mr-3 text-blue-400" />
-                <p>+91 98765 43210</p>
-              </div>
-              <div className="flex items-center">
-                <FaEnvelope className="mr-3 text-blue-400" />
-                <Link to="mailto:info@example.com" className="hover:text-white transition-colors duration-300">
-                  info@example.com
-                </Link>
-              </div>
-            </address>
           </div>
         </div>
 
         {/* Copyright */}
-        <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400 text-sm">
-          <div className="flex flex-col md:flex-row justify-center items-center space-y-2 md:space-y-0 md:space-x-4">
-            <p>
-              © {new Date().getFullYear()} आपकी कंपनी. सर्वाधिकार सुरक्षित
-            </p>
-            <div className="hidden md:block">|</div>
-            <div className="flex space-x-4 md:space-x-2">
-              <Link to="/privacy-policy" className="hover:text-white transition-colors duration-300">
-                गोपनीयता नीति
-              </Link>
-              <span className="hidden md:block">|</span>
-              <Link to="/terms" className="hover:text-white transition-colors duration-300">
-                उपयोग की शर्तें
-              </Link>
-            </div>
-          </div>
+        <div className="copyright-wrapper border-t border-gray-200 dark:border-gray-700 mt-8 pt-6 text-center">
+          <p className="text-sm">
+            &copy; 2025 <Link to="/" className="text-blue-600 dark:text-blue-400 hover:underline">Raviopedia.</Link>
+            <span> All Right Reserved</span>
+          </p>
         </div>
       </div>
     </footer>
