@@ -81,6 +81,7 @@ const MONGO_URI = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@$
 mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  ssl: true
 })
 .then(() => console.log('✅ MongoDB Atlas connected successfully'))
 .catch(err => {
