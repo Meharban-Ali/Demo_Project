@@ -17,14 +17,14 @@ const app = express();
 
 // ✅ CORS Configuration
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: 'http://64.227.132.207',
   credentials: true,
 }));
 
 // ✅ Serve Static Files (uploads)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res, path) => {
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+    res.setHeader('Access-Control-Allow-Origin', 'http://64.227.132.207');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Cache-Control', 'public, max-age=86400');
   }
@@ -35,7 +35,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "http://localhost:5000"]
+      imgSrc: ["'self'", "data:", "http://64.227.132.207"]
     }
   },
   crossOriginResourcePolicy: { policy: "cross-origin" }
