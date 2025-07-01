@@ -17,14 +17,14 @@ const app = express();
 
 // ✅ CORS Configuration
 app.use(cors({
-  origin: 'http://64.227.132.207',
+  origin: 'http://localhost:5173',
   credentials: true,
 }));
 
 // ✅ Serve Static Files (uploads)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res, path) => {
-    res.setHeader('Access-Control-Allow-Origin', 'http://64.227.132.207');
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Cache-Control', 'public, max-age=86400');
   }

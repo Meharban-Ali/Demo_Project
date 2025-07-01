@@ -16,7 +16,8 @@ export const Slider = () => {
 
   // Fetch videos from API
   useEffect(() => {
-    const API_URL = 'http://localhost:5000/api/content?type=video';
+    // const API_URL = 'http://localhost:5000/api/content?type=video';
+    const API_URL = import.meta.env.VITE_API_BASE_URL + '/content?type=video';
     
     const fetchVideos = async () => {
       try {
@@ -84,8 +85,10 @@ export const Slider = () => {
   const getMediaUrl = (url) => {
     if (!url) return '';
     if (url.startsWith('http')) return url;
-    if (url.startsWith('/')) return `http://localhost:5000${url}`;
-    return `http://localhost:5000/${url}`;
+    if (url.startsWith('/')) return `${import.meta.env.VITE_API_BASE_URL}/${url.replace(/^\/+/, '')}`;
+    return `${import.meta.env.VITE_API_BASE_URL}/${url.replace(/^\/+/, '')}`;
+    // if (url.startsWith('/')) return `http://localhost:5000${url}`;
+    // return `http://localhost:5000/${url}`;
   };
 
   const nextSlide = () => {
