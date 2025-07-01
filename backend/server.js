@@ -16,19 +16,45 @@ const path = require('path');
 const app = express();
 
 // ✅ CORS Configuration
+
+const allowedOrigins = [
+  'http://localhost:5173',        // dev mode
+  'https://raviopedia.in',        // ✅ production domain
+  'https://www.raviopedia.in'     // ✅ with www
+];
+
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // For non-browser requests (like Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 
 // ✅ Serve Static Files (uploads)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  setHeaders: (res, path) => {
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+  setHeaders: (res, path, stat) => {
+    const origin = res.req.headers.origin; // यह उस request का origin पकड़ता है
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://raviopedia.in',
+      'https://www.raviopedia.in'
+    ];
+
+    if (allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Cache-Control', 'public, max-age=86400');
   }
 }));
+
 
 // ✅ Middleware Setup
 app.use(helmet({
