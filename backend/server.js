@@ -60,12 +60,17 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "http://localhost:5000"]
+      defaultSrc: ["'self'", "https://raviopedia.in"],
+      scriptSrc: ["'self'", "https://raviopedia.in", "'unsafe-inline'"],
+      styleSrc: ["'self'", "https://raviopedia.in", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https://raviopedia.in", "blob:"],
+      connectSrc: ["'self'", "https://raviopedia.in"],
+      frameSrc: ["'self'"]
     }
   },
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
+
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
