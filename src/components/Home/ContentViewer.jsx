@@ -31,7 +31,7 @@ export const ContentViewer = () => {
       setLoading(true);
       setError(null);
       
-      const res = await axios.get('http://localhost:5000/api/content', {
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/content`, {
         timeout: 10000,
         headers: {
           'Cache-Control': 'no-cache',
@@ -120,7 +120,7 @@ export const ContentViewer = () => {
         return url;
       }
       
-      return `http://localhost:5000${url.startsWith('/') ? '' : '/'}${url}`;
+      return `${import.meta.env.VITE_API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
     } catch (e) {
       console.error('Error processing URL:', url, e);
       return DEFAULT_IMAGE;
