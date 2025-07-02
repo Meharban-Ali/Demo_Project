@@ -14,36 +14,26 @@ export const Slider = () => {
   const autoplayTimer = useRef(null);
   const isSliding = useRef(false);
 
-  // Fetch videos from API
   useEffect(() => {
-    // const API_URL = 'http://localhost:5000/api/content?type=video';
     const API_URL = import.meta.env.VITE_API_BASE_URL + '/content?type=video';
-    
+    console.log('🌐 API_URL:', API_URL);
+    console.log('🌐 VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
+
     const fetchVideos = async () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         const response = await fetch(API_URL);
-        
         if (!response.ok) {
           throw new Error(`API request failed with status ${response.status}`);
         }
 
         const data = await response.json();
-        let videosData = [];
-        
-        if (Array.isArray(data)) {
-          videosData = data;
-        } else if (data && typeof data === 'object') {
-          if (Array.isArray(data.videos)) videosData = data.videos;
-          else if (Array.isArray(data.results)) videosData = data.results;
-          else if (Array.isArray(data.items)) videosData = data.items;
-          else if (Array.isArray(data.data)) videosData = data.data;
-        }
+        const videosData = Array.isArray(data.data) ? data.data : [];
 
-        if (!Array.isArray(videosData) || videosData.length === 0) {
-          throw new Error('API response does not contain valid video data');
+        if (!videosData.length) {
+          throw new Error('No video data found');
         }
 
         const processedVideos = videosData.map(video => ({
@@ -67,7 +57,6 @@ export const Slider = () => {
     fetchVideos();
   }, []);
 
-  // Auto-play functionality
   useEffect(() => {
     if (videos.length > 1 && isPlaying && !isSliding.current) {
       clearTimeout(autoplayTimer.current);
@@ -85,10 +74,7 @@ export const Slider = () => {
   const getMediaUrl = (url) => {
     if (!url) return '';
     if (url.startsWith('http')) return url;
-    if (url.startsWith('/')) return `${import.meta.env.VITE_API_BASE_URL}/${url.replace(/^\/+/, '')}`;
-    return `${import.meta.env.VITE_API_BASE_URL}/${url.replace(/^\/+/, '')}`;
-    // if (url.startsWith('/')) return `http://localhost:5000${url}`;
-    // return `http://localhost:5000/${url}`;
+    return `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${url}`;
   };
 
   const nextSlide = () => {
