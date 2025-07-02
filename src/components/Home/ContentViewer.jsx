@@ -31,7 +31,7 @@ export const ContentViewer = () => {
       setLoading(true);
       setError(null);
       
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/content`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/content`, {
         timeout: 10000,
         headers: {
           'Cache-Control': 'no-cache',
