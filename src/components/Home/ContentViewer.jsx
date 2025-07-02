@@ -16,7 +16,8 @@ const getIcon = (type) => {
   }
 };
 
-const DEFAULT_IMAGE = 'https://via.placeholder.com/400x225?text=No+Preview';
+// ✅ Local fallback image
+const DEFAULT_IMAGE = `${import.meta.env.VITE_API_BASE_URL}/uploads/default-preview.jpg`;
 
 export const ContentViewer = () => {
   const [content, setContent] = useState([]);
@@ -40,7 +41,7 @@ export const ContentViewer = () => {
       });
 
       let contentData = [];
-      
+
       if (Array.isArray(res.data)) {
         contentData = res.data;
       } else if (res.data && Array.isArray(res.data.data)) {
@@ -52,17 +53,17 @@ export const ContentViewer = () => {
       }
 
       setContent([...contentData].reverse());
-      
+
     } catch (error) {
       console.error('Error fetching content:', error);
-      
+
       let errorMessage = 'Failed to load content. Please try again later.';
       if (error.response) {
         errorMessage = error.response.data.message || errorMessage;
       } else if (error.request) {
         errorMessage = 'Server is not responding. Please check your connection.';
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -74,7 +75,6 @@ export const ContentViewer = () => {
   }, []);
 
   useEffect(() => {
-    // Auto-play preview for the first few seconds when video is in view
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -82,20 +82,17 @@ export const ContentViewer = () => {
           if (!videoId) return;
 
           if (entry.isIntersecting && playingVideo !== videoId) {
-            // Play preview for 3 seconds
             const video = videoRefs.current[videoId];
             if (video) {
               video.currentTime = 0;
               video.muted = true;
-              video.play()
-                .then(() => {
-                  setTimeout(() => {
-                    if (video && playingVideo !== videoId) {
-                      video.pause();
-                    }
-                  }, 3000); // 3 second preview
-                })
-                .catch(e => console.log('Autoplay prevented:', e));
+              video.play().then(() => {
+                setTimeout(() => {
+                  if (video && playingVideo !== videoId) {
+                    video.pause();
+                  }
+                }, 3000);
+              }).catch(e => console.log('Autoplay prevented:', e));
             }
           }
         });
@@ -114,12 +111,12 @@ export const ContentViewer = () => {
 
   const getImageUrl = (url) => {
     if (!url) return DEFAULT_IMAGE;
-    
+
     try {
       if (url.startsWith('http') || url.startsWith('//')) {
         return url;
       }
-      
+
       return `${import.meta.env.VITE_API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
     } catch (e) {
       console.error('Error processing URL:', url, e);
@@ -135,7 +132,6 @@ export const ContentViewer = () => {
 
   const handleVideoPlay = (id) => {
     setPlayingVideo(id);
-    // Pause all other videos
     Object.keys(videoRefs.current).forEach((videoId) => {
       if (videoId !== id && videoRefs.current[videoId]) {
         videoRefs.current[videoId].pause();
@@ -202,8 +198,7 @@ export const ContentViewer = () => {
                 className="bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-300 ease-in-out hover:shadow-md hover:-translate-y-1 cursor-pointer flex flex-col h-full"
                 onClick={() => handleCardClick(item._id || item.id)}
               >
-                {/* Video Preview Section */}
-                {item.type === 'video' && (
+                {item.type === 'video' ? (
                   <div className="relative pt-[56.25%] overflow-hidden bg-black">
                     <video
                       ref={(el) => {
@@ -232,8 +227,6 @@ export const ContentViewer = () => {
                       <source src={getImageUrl(item.url)} type="video/mp4" />
                       Your browser does not support the video tag.
                     </video>
-                    
-                    {/* Play Button Overlay */}
                     {playingVideo !== (item._id || item.id) && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 transition-opacity">
                         <div className="w-12 h-12 rounded-full bg-white bg-opacity-80 flex items-center justify-center">
@@ -244,10 +237,7 @@ export const ContentViewer = () => {
                       </div>
                     )}
                   </div>
-                )}
-
-                {/* Image/Audio Section */}
-                {item.type !== 'video' && (
+                ) : (
                   <div className="relative pt-[56.25%] overflow-hidden bg-gray-100">
                     {item.type === 'audio' ? (
                       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-100 to-blue-100">
@@ -264,6 +254,7 @@ export const ContentViewer = () => {
                           className="max-w-full max-h-full object-contain"
                           loading="lazy"
                           onError={(e) => {
+                            e.target.onerror = null;
                             e.target.src = DEFAULT_IMAGE;
                           }}
                         />
