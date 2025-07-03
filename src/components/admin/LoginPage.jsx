@@ -1,4 +1,13 @@
-import { FaUser, FaLock, FaSignInAlt, FaExclamationCircle, FaChevronDown, FaEye, FaEyeSlash, FaCheckCircle } from 'react-icons/fa';
+import {
+  FaUser,
+  FaLock,
+  FaSignInAlt,
+  FaExclamationCircle,
+  FaChevronDown,
+  FaEye,
+  FaEyeSlash,
+  FaCheckCircle
+} from 'react-icons/fa';
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -7,22 +16,19 @@ export const LoginPage = () => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    role: 'admin' // Default role
+    role: 'admin'
   });
-  const [errors, setErrors] = useState({
-    username: '',
-    password: '',
-    role: ''
-  });
+  const [errors, setErrors] = useState({ username: '', password: '', role: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [loginSuccess, setLoginSuccess] = useState(false); // New state for success message
+  const [loginSuccess, setLoginSuccess] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
-  // Close dropdown when clicking outside
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -30,85 +36,54 @@ export const LoginPage = () => {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Strong validation patterns
   const USERNAME_REGEX = /^[a-zA-Z0-9_-]{4,20}$/;
   const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user types
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-    
-    // Clear submit error when user types
-    if (submitError) {
-      setSubmitError('');
-    }
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+    if (submitError) setSubmitError('');
   };
 
   const handleRoleSelect = (role) => {
-    setFormData(prev => ({
-      ...prev,
-      role
-    }));
+    setFormData(prev => ({ ...prev, role }));
     setShowRoleDropdown(false);
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitError(''); // Clear previous errors
-    setLoginSuccess(false); // Clear previous success
-    
+    setSubmitError('');
+    setLoginSuccess(false);
+
     if (validateForm()) {
       setIsSubmitting(true);
-      
       try {
-        const response = await fetch('http://localhost:5000/api/login', {
+        const response = await fetch(`${API_BASE_URL}/api/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
         });
-  
+
         const data = await response.json();
-        
-        if (!response.ok) {
-          // Show specific error message from server or default message
-          throw new Error(data.message || 'Invalid username or password');
-        }
-  
-        // Save token and redirect
+
+        if (!response.ok) throw new Error(data.message || 'Invalid username or password');
+
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        
-        // Show success message for admin before redirect
+
         if (formData.role === 'admin') {
           setLoginSuccess(true);
-          setTimeout(() => {
-            navigate('/adminDashboard');
-          }, 1500); // Redirect after 1.5 seconds
+          setTimeout(() => navigate('/adminDashboard'), 1500);
         } else {
           navigate('/errorPage');
         }
       } catch (error) {
-        // Set the error message to be displayed
         setSubmitError(error.message || 'Login failed. Please try again.');
       } finally {
         setIsSubmitting(false);
@@ -116,16 +91,13 @@ export const LoginPage = () => {
     }
   };
 
-  // Prevent paste and inspect element manipulation
   const handlePaste = (e) => {
     e.preventDefault();
     return false;
   };
 
   const handleContextMenu = (e) => {
-    if (e.target.type === 'password') {
-      e.preventDefault();
-    }
+    if (e.target.type === 'password') e.preventDefault();
     return false;
   };
 
@@ -134,12 +106,12 @@ export const LoginPage = () => {
     const newErrors = { username: '', password: '' };
 
     if (!USERNAME_REGEX.test(formData.username)) {
-      newErrors.username = 'Username must be 4-20 characters and can only contain letters, numbers, underscores, or hyphens';
+      newErrors.username = 'Username must be 4-20 characters with letters, numbers, _ or -';
       valid = false;
     }
 
     if (!PASSWORD_REGEX.test(formData.password)) {
-      newErrors.password = 'Password must be at least 8 characters with uppercase, lowercase, number, and special character';
+      newErrors.password = 'Password must have uppercase, lowercase, number & special character';
       valid = false;
     }
 
@@ -150,8 +122,8 @@ export const LoginPage = () => {
   return (
     <motion.div 
       className="min-h-screen flex items-center justify-center bg-gray-100 p-4"
-      style={{ 
-        backgroundImage: 'url(https://images.unsplash.com/photo-1497366754035-f200968a6e72?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80)', 
+      style={{
+        backgroundImage: 'url(https://images.unsplash.com/photo-1497366754035-f200968a6e72?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80)',
         backgroundSize: 'cover',
         backgroundPosition: 'center'
       }}
@@ -185,23 +157,20 @@ export const LoginPage = () => {
         </div>
 
         <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit} noValidate>
-          {/* Success Message Display */}
           {loginSuccess && (
             <motion.div
               className="p-3 bg-green-100 border-l-4 border-green-500 text-green-700 rounded"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              exit={{ opacity: 0 }}
             >
               <div className="flex items-center">
                 <FaCheckCircle className="mr-2" />
-                <p>Login successful! Redirecting to admin dashboard...</p>
+                <p>Login successful! Redirecting...</p>
               </div>
             </motion.div>
           )}
 
-          {/* Error Message Display */}
           {submitError && (
             <motion.div
               className="p-3 bg-red-100 border-l-4 border-red-500 text-red-700 rounded"
@@ -216,15 +185,12 @@ export const LoginPage = () => {
             </motion.div>
           )}
 
-          {/* Rest of the form remains the same */}
-          {/* Role Selection Dropdown */}
+          {/* Role Selector */}
           <div className="relative" ref={dropdownRef}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Login As
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Login As</label>
             <button
               type="button"
-              className="w-full px-4 py-2 md:py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all flex items-center justify-between"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 flex items-center justify-between"
               onClick={() => setShowRoleDropdown(!showRoleDropdown)}
             >
               <span className="capitalize">{formData.role}</span>
@@ -235,7 +201,6 @@ export const LoginPage = () => {
                 <FaChevronDown className="text-gray-500" />
               </motion.div>
             </button>
-            
             <AnimatePresence>
               {showRoleDropdown && (
                 <motion.div
@@ -265,11 +230,7 @@ export const LoginPage = () => {
           </div>
 
           {/* Username Field */}
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3, delay: 0.8 }}
-          >
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
               <FaUser className="mr-2 text-blue-600" /> Username
             </label>
@@ -279,9 +240,8 @@ export const LoginPage = () => {
               value={formData.username}
               onChange={handleChange}
               onPaste={handlePaste}
-              className={`w-full px-4 py-2 md:py-3 rounded-lg border ${errors.username ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all`}
+              className={`w-full px-4 py-2 rounded-lg border ${errors.username ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-600`}
               placeholder="Enter username"
-              pattern="[a-zA-Z0-9_-]{4,20}"
               required
             />
             {errors.username && (
@@ -289,14 +249,10 @@ export const LoginPage = () => {
                 <FaExclamationCircle className="mr-1" /> {errors.username}
               </p>
             )}
-          </motion.div>
+          </div>
 
           {/* Password Field */}
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3, delay: 1.0 }}
-          >
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
               <FaLock className="mr-2 text-blue-600" /> Password
             </label>
@@ -308,16 +264,14 @@ export const LoginPage = () => {
                 onChange={handleChange}
                 onPaste={handlePaste}
                 onContextMenu={handleContextMenu}
-                className={`w-full px-4 py-2 md:py-3 rounded-lg border ${errors.password ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all pr-10`}
+                className={`w-full px-4 py-2 rounded-lg border ${errors.password ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-600 pr-10`}
                 placeholder="Enter password"
-                pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
                 required
               />
               <button
                 type="button"
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-blue-600"
                 onClick={togglePasswordVisibility}
-                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
@@ -327,67 +281,26 @@ export const LoginPage = () => {
                 <FaExclamationCircle className="mr-1" /> {errors.password}
               </p>
             )}
-          </motion.div>
-
-          <motion.div 
-            className="flex items-center justify-between"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3, delay: 1.2 }}
-          >
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-600 border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                Remember me
-              </label>
-            </div>
-
-            <div className="text-sm">
-              <Link to="/forgetpassword" className="font-medium text-blue-600 hover:text-indigo-500">
-                Forgot password?
-              </Link>
-            </div>
-          </motion.div>
+          </div>
 
           <motion.button
             type="submit"
             disabled={isSubmitting || loginSuccess}
-            className="w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full py-2 px-4 rounded-md shadow-sm text-white bg-blue-600 hover:bg-orange-600 disabled:opacity-70"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 1.4 }}
+            transition={{ duration: 0.3 }}
           >
-            {isSubmitting ? (
-              <motion.span
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              >
-                Signing in...
-              </motion.span>
-            ) : (
-              <>
-                <FaSignInAlt className="mr-2" /> Sign In
-              </>
+            {isSubmitting ? "Signing in..." : (
+              <><FaSignInAlt className="mr-2 inline-block" /> Sign In</>
             )}
           </motion.button>
         </form>
 
-        <motion.div 
-          className="mt-4 md:mt-6 text-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, delay: 1.6 }}
-        >
-          <p className="text-xs md:text-sm text-gray-600">
+        <motion.div className="mt-4 text-center">
+          <p className="text-xs text-gray-600">
             Don't have an account?{' '}
-            <Link to="/contact-admin" className="font-medium text-blue-600 hover:text-blue-600">
+            <Link to="/contact-admin" className="font-medium text-blue-600 hover:text-blue-700">
               Contact admin
             </Link>
           </p>

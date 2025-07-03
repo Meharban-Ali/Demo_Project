@@ -16,10 +16,10 @@ export const DashboardStats = () => {
         setError(null);
 
         // Use direct URL or environment variable
-        const apiUrl = 'http://localhost:5000'; 
+       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
         // Alternative: const apiUrl = process.env.REACT_APP_API_BASE_URL;
 
-        const res = await axios.get(`${apiUrl}/api/dashboard/stats`, {
+        const res = await axios.get(`${API_BASE_URL}/api/dashboard/stats`, {
           timeout: 30000, // 10 second timeout
           headers: {
             'Content-Type': 'application/json',

@@ -19,10 +19,11 @@ export const ContentDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ✅ Fixed: Environment variable handling for CRA
-  const API_BASE_URL = window._env_?.API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const API_BASE_URL =
+    window._env_?.API_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    'http://localhost:5000';
 
-  // Content type icons with colors
   const getContentIcon = (type) => {
     const iconStyle = "mr-2 flex-shrink-0";
     const icons = {
@@ -35,34 +36,32 @@ export const ContentDetail = () => {
     return icons[type] || <FiFileText className={iconStyle} />;
   };
 
-  // Fetch content details from API
   const fetchContentDetails = async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await axios.get(`${API_BASE_URL}/api/content/${id}`);
-      
-      if (!response.data || typeof response.data !== 'object') {
+      const raw = response.data?.data;
+
+      if (!raw || typeof raw !== 'object') {
         throw new Error('Invalid content data received');
       }
 
-      // Validate and format content data
       const contentData = {
-        id: response.data.id || id,
-        title: response.data.title?.trim() || 'Untitled Content',
-        description: response.data.description?.trim() || 'No description available',
-        type: ['blog', 'news', 'video', 'audio', 'image'].includes(response.data.type) 
-          ? response.data.type 
+        id: raw._id || id,
+        title: raw.title?.trim() || 'Untitled Content',
+        description: raw.description?.trim() || 'No description available',
+        type: ['blog', 'news', 'video', 'audio', 'image'].includes(raw.type)
+          ? raw.type
           : 'blog',
-        url: typeof response.data.url === 'string' ? response.data.url : null,
-        createdAt: response.data.createdAt 
-          ? new Date(response.data.createdAt) 
-          : new Date(),
-        category: response.data.category || null,
-        thumbnail: typeof response.data.thumbnail === 'string' 
-          ? response.data.thumbnail 
-          : null
+        url: typeof raw.url === 'string' ? raw.url : null,
+        createdAt: raw.createdAt ? new Date(raw.createdAt) : new Date(),
+        category: raw.category || null,
+        thumbnail:
+          typeof raw.thumbnail === 'string'
+            ? raw.thumbnail
+            : null
       };
 
       setContent(contentData);
@@ -73,12 +72,10 @@ export const ContentDetail = () => {
     }
   };
 
-  // Handle different types of errors
   const handleContentError = (error) => {
     let errorMsg = 'Content load failed. Please try again.';
-    
+
     if (error.response) {
-      // Server responded with error status
       if (error.response.status === 404) {
         errorMsg = 'Requested content not found';
       } else if (error.response.data?.message) {
@@ -89,30 +86,26 @@ export const ContentDetail = () => {
     } else if (error.message.includes('Invalid content')) {
       errorMsg = 'Invalid content data received';
     }
-    
+
     console.error('Content Error:', error);
     setError(errorMsg);
   };
 
-  // Generate proper media URL
   const getMediaUrl = (path) => {
     if (!path || typeof path !== 'string') return null;
-    
-    // If already a full URL
+
     if (path.startsWith('http://') || path.startsWith('https://')) {
       return path;
     }
-    
-    // Handle relative paths
-    return path.startsWith('/') 
+
+    return path.startsWith('/')
       ? `${API_BASE_URL}${path}`
       : `${API_BASE_URL}/uploads/${path}`;
   };
 
-  // Format date nicely
   const formatContentDate = (date) => {
     if (!date || isNaN(new Date(date))) return 'Date not available';
-    
+
     return new Date(date).toLocaleDateString('en-IN', {
       year: 'numeric',
       month: 'long',
@@ -122,17 +115,14 @@ export const ContentDetail = () => {
     });
   };
 
-  // Handle media loading errors
   const handleMediaError = (event) => {
     event.target.style.display = 'none';
   };
 
-  // Fetch content when component mounts or ID changes
   useEffect(() => {
     fetchContentDetails();
   }, [id]);
 
-  // Loading state
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -142,7 +132,6 @@ export const ContentDetail = () => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="max-w-4xl mx-auto p-6">
@@ -161,7 +150,6 @@ export const ContentDetail = () => {
     );
   }
 
-  // No content found
   if (!content) {
     return (
       <div className="max-w-4xl mx-auto p-6 text-center">
@@ -176,10 +164,8 @@ export const ContentDetail = () => {
     );
   }
 
-  // Main content display
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
-      {/* Back button */}
       <button
         onClick={() => navigate(-1)}
         className="flex items-center text-blue-600 hover:text-blue-800 mb-6 transition-colors"
@@ -188,10 +174,7 @@ export const ContentDetail = () => {
         Back to Content
       </button>
 
-      {/* Content card */}
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        
-        {/* Media display section */}
         <div className="w-full">
           {content.type === 'video' ? (
             <div className="relative pt-[56.25%] bg-black">
@@ -236,7 +219,6 @@ export const ContentDetail = () => {
           )}
         </div>
 
-        {/* Content details section */}
         <div className="p-6">
           <div className="flex items-center mb-4">
             {getContentIcon(content.type)}

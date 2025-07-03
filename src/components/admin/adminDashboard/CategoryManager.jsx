@@ -8,23 +8,11 @@ import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-export const useCategoryList = () => {
-  const [categories, setCategories] = useState([]);
-
-  useEffect(() => {
-    axios.get('http://localhost:5000/api/categories')
-      .then((res) => setCategories(res.data))
-      .catch(() => toast.error('Failed to fetch categories'));
-  }, []);
-
-  return categories;
-};
-
 export const CategoryManager = ({ isSidebarOpen }) => {
   const [categories, setCategories] = useState([]);
   const [categoryName, setCategoryName] = useState('');
   const [editingId, setEditingId] = useState(null);
-  const [categoryId, setCategoryId] = useState(''); // Category ID state
+  const [categoryId, setCategoryId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
@@ -32,7 +20,7 @@ export const CategoryManager = ({ isSidebarOpen }) => {
   const [showCategories, setShowCategories] = useState(true);
   const navigate = useNavigate();
 
-  const API_URL = 'http://localhost:5000/api/categories';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -48,7 +36,7 @@ export const CategoryManager = ({ isSidebarOpen }) => {
   const fetchCategories = async () => {
     setIsLoading(true);
     try {
-      const res = await axios.get(API_URL);
+      const res = await axios.get(`${API_BASE_URL}/api/categories`);
       setCategories(res.data);
     } catch (error) {
       toast.error('Failed to fetch categories');
@@ -65,25 +53,21 @@ export const CategoryManager = ({ isSidebarOpen }) => {
 
     try {
       if (editingId) {
-        const res = await axios.put(`${API_URL}/${editingId}`, { name: categoryName });
+        const res = await axios.put(`${API_BASE_URL}/api/categories/${editingId}`, {
+          name: categoryName
+        });
         setCategories(categories.map(cat => (cat._id === editingId ? res.data : cat)));
         toast.success('Category updated successfully');
         setEditingId(null);
       } else {
-        const res = await axios.post(API_URL, { name: categoryName });
-        setCategories([...categories, res.data]);
-        toast.success('Category added successfully', {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
+        const res = await axios.post(`${API_BASE_URL}/api/categories`, {
+          name: categoryName
         });
+        setCategories([...categories, res.data]);
+        toast.success('Category added successfully');
       }
       setCategoryName('');
-      setCategoryId(''); // Reset category selection
+      setCategoryId('');
     } catch (err) {
       toast.error('Error saving category');
     }
@@ -92,7 +76,7 @@ export const CategoryManager = ({ isSidebarOpen }) => {
   const handleEdit = (category) => {
     setCategoryName(category.name);
     setEditingId(category._id);
-    setCategoryId(category._id); // Pre-select category for editing
+    setCategoryId(category._id);
   };
 
   const handleDeleteClick = (category) => {
@@ -102,7 +86,7 @@ export const CategoryManager = ({ isSidebarOpen }) => {
 
   const confirmDelete = async () => {
     try {
-      await axios.delete(`${API_URL}/${categoryToDelete._id}`);
+      await axios.delete(`${API_BASE_URL}/api/categories/${categoryToDelete._id}`);
       setCategories(categories.filter(cat => cat._id !== categoryToDelete._id));
       toast.success('Category deleted');
     } catch {
@@ -119,9 +103,9 @@ export const CategoryManager = ({ isSidebarOpen }) => {
 
   const toggleIndividualVisibility = async (categoryId) => {
     try {
-      const target = categories.find(cat => cat._id === categoryId);
-      const res = await axios.put(`${API_URL}/${categoryId}`, {
-        visible: !target.visible
+      const category = categories.find(c => c._id === categoryId);
+      const res = await axios.put(`${API_BASE_URL}/api/categories/${categoryId}`, {
+        visible: !category.visible
       });
       setCategories(categories.map(cat => (cat._id === categoryId ? res.data : cat)));
     } catch {
@@ -200,7 +184,7 @@ export const CategoryManager = ({ isSidebarOpen }) => {
           </button>
         </div>
 
-        {/* Category Dropdown for selecting a category */}
+        {/* Category Dropdown */}
         <div className="flex flex-col sm:flex-row mb-6 gap-2">
           <select
             value={categoryId}

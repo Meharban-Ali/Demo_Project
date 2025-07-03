@@ -65,6 +65,7 @@ export const ContentManager = () => {
     audio: Array.isArray(content) ? content.filter(item => item?.type === 'audio').length : 0
   };
 
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://raviopedia.in';
   // Effect for mobile detection
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -78,7 +79,7 @@ export const ContentManager = () => {
     const fetchCategories = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('http://localhost:5000/api/categories');
+        const response = await fetch(`${API_BASE_URL}/api/categories`);
         if (!response.ok) throw new Error('Failed to fetch categories');
         const data = await response.json();
         setCategories(Array.isArray(data) ? data : []);
@@ -96,9 +97,8 @@ export const ContentManager = () => {
     const fetchContent = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('http://localhost:5000/api/content');
+         const response = await fetch(`${API_BASE_URL}/api/content`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        
         const data = await response.json();
         const contentData = data.data || data.content || (Array.isArray(data) ? data : [data].filter(Boolean));
         setContent(Array.isArray(contentData) ? contentData : [contentData]);
@@ -460,7 +460,7 @@ export const ContentManager = () => {
   const confirmDelete = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/content/${itemToDelete}`, {
+      const response = await fetch(`${API_BASE_URL}/api/content/${itemToDelete}`, {
         method: 'DELETE'
       });
 
@@ -559,10 +559,10 @@ export const ContentManager = () => {
     }
 
     // API call with timeout
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    // const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
     const endpoint = editingId 
-      ? `${apiUrl}/api/content/${editingId}`
-      : `${apiUrl}/api/content`;
+      ? `${API_BASE_URL}/api/content/${editingId}`
+      : `${API_BASE_URL}/api/content`;
     const method = editingId ? 'PUT' : 'POST';
 
     const controller = new AbortController();
@@ -750,19 +750,19 @@ export const ContentManager = () => {
                       <div className="h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
                         {item.type === 'video' ? (
                           <video className="w-full h-full object-cover">
-                            <source src={`http://localhost:5000${item.url}`} type="video/mp4" />
+                            <source src={`${API_BASE_URL}${item.url}`} type="video/mp4" />
                           </video>
                         ) : item.type === 'audio' ? (
                           <div className="w-full p-4">
                             <audio controls className="w-full">
-                              <source src={`http://localhost:5000${item.url}`} type="audio/mpeg" />
+                              <source src={`${API_BASE_URL}${item.url}`} type="audio/mpeg" />
                             </audio>
                           </div>
                         ) : (
                           <div className="image-section p-2 bg-gray-50">
                             {item.type === 'blog' || item.type === 'news' ? (
                               <img
-                                src={`http://localhost:5000${item.url}`}
+                                src={`${API_BASE_URL}${item.url}`}
                                 alt={item.title}
                                 className="w-full h-40 object-cover rounded"
                               />

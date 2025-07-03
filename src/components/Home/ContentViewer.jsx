@@ -17,7 +17,7 @@ const getIcon = (type) => {
 };
 
 // ✅ Local fallback image
-const DEFAULT_IMAGE = `${import.meta.env.VITE_API_BASE_URL}/uploads/default-preview.jpg`;
+const DEFAULT_IMAGE = `${import.meta.env.VITE_API_BASE_URL}/api/uploads/default-preview.jpg`;
 
 export const ContentViewer = () => {
   const [content, setContent] = useState([]);
@@ -32,7 +32,7 @@ export const ContentViewer = () => {
       setLoading(true);
       setError(null);
       
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/content`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/content`, {
         timeout: 10000,
         headers: {
           'Cache-Control': 'no-cache',
@@ -117,7 +117,8 @@ export const ContentViewer = () => {
         return url;
       }
 
-      return `${import.meta.env.VITE_API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+      return `${import.meta.env.VITE_API_BASE_URL.replace(/\/api$/, '')}${url.startsWith('/') ? '' : '/'}${url}`;
+
     } catch (e) {
       console.error('Error processing URL:', url, e);
       return DEFAULT_IMAGE;
