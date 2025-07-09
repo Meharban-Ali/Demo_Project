@@ -7,19 +7,19 @@ export const MyteamPage = () => {
       id: 1,
       name: "Rk Ranjan",
       role: "Founder",
-      image: "src/Assets/Image/RK_Ranjan.png",
+      image: "https://res.cloudinary.com/dh3os5xi2/image/upload/v1751914562/RK_Ranjan_rlbitx.png",
     },
     {
       id: 2,
       name: "Rahul Bharti",
       role: "Director",
-      image: "src/Assets/Image/Rahul_Bhartie.png",
+      image: "https://res.cloudinary.com/dh3os5xi2/image/upload/v1744137341/Rahul_Bhartie_jccxvp.png",
     },
     {
       id: 3,
       name: "Sachin Kumar",
       role: "Multimedia Producer",
-      image: "src/Assets/Image/SachinKumar.jpg",
+      image: "https://res.cloudinary.com/dh3os5xi2/image/upload/v1744137555/Profile_Sachin_Kumar_2000_kif0fb.png",
     },
     {
       id: 4,
@@ -31,7 +31,7 @@ export const MyteamPage = () => {
       id: 5,
       name: "Sunny Sharma",
       role: "Content Writer",
-      image: "src/Assets/Image/ProfileSunnySharma.png",
+      image: "https://res.cloudinary.com/dh3os5xi2/image/upload/v1744137422/ProfileSunnySharma_o3bdoq.png",
     },
     // {
     //   id: 6,
@@ -49,7 +49,7 @@ export const MyteamPage = () => {
       id: 8,
       name: "Satyadeo kumar",
       role: "Sub Editor",
-      image: "src/Assets/Image/Profile_Satyadeo.png",
+      image: "https://res.cloudinary.com/dh3os5xi2/image/upload/v1751914812/Profile_Satyadeo_ktm7is.png",
     }
   ];
 

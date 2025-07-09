@@ -12,6 +12,8 @@ export const FeedbackForm = () => {
     rating: null
   });
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const formRef = useRef(null);
 
   const handleChange = (e) => {
@@ -19,21 +21,49 @@ export const FeedbackForm = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Feedback submitted:', formData);
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setIsOpen(false);
-      setFormData({
-        name: '',
-        email: '',
-        feedbackType: 'general',
-        message: '',
-        rating: null
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("https://formspree.io/f/xblgqdkp", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          feedbackType: formData.feedbackType,
+          message: formData.message,
+          rating: formData.rating,
+          subject: `Feedback from ${formData.name || 'Anonymous'} - ${formData.feedbackType}`
+        }),
       });
-    }, 2000);
+
+      if (response.ok) {
+        setSubmitted(true);
+        setTimeout(() => {
+          setSubmitted(false);
+          setIsOpen(false);
+          setFormData({
+            name: '',
+            email: '',
+            feedbackType: 'general',
+            message: '',
+            rating: null
+          });
+        }, 2000);
+      } else {
+        throw new Error('Failed to submit feedback');
+      }
+    } catch (err) {
+      setError('Failed to submit feedback. Please try again later.');
+      console.error('Feedback submission error:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleRatingClick = (rating) => {
@@ -118,6 +148,12 @@ export const FeedbackForm = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
+              {error && (
+                <div className="mb-4 p-2 bg-red-100 text-red-700 text-sm rounded">
+                  {error}
+                </div>
+              )}
+              
               <div className="mb-4">
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                   <FiUser className="mr-2" /> Name
@@ -195,9 +231,16 @@ export const FeedbackForm = () => {
 
               <button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center justify-center transition-colors duration-300"
+                disabled={isLoading}
+                className={`w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center justify-center transition-colors duration-300 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                <FiSend className="mr-2" /> Submit Feedback
+                {isLoading ? (
+                  'Sending...'
+                ) : (
+                  <>
+                    <FiSend className="mr-2" /> Submit Feedback
+                  </>
+                )}
               </button>
             </form>
           )}

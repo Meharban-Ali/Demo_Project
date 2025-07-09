@@ -241,43 +241,85 @@ export const ContentManager = () => {
    * Handles input changes for all form fields
    * @param {Object} e - Event object
    */
-  const handleInputChange = (e) => {
-    const { name, value, files } = e.target;
-    
-    // Handle file input
+const handleInputChange = (e) => {
+  const { name, value, type, files } = e.target;
+
+  if (type === 'file') {
     if (name === 'files') {
-      const selectedFiles = Array.from(files || []);
-      if (selectedFiles.length > 0) {
-        const error = validateFiles(selectedFiles, formData.type);
-        setFileError(error);
-        if (!error) {
-          setFormData(prev => ({ 
-            ...prev, 
-            files: selectedFiles,
-            fileUrls: selectedFiles.map(file => URL.createObjectURL(file))
-          }));
-        }
-      } else {
-        // Clear files when no selection
-        setFormData(prev => ({ ...prev, files: [], fileUrls: [] }));
-        setFileError('');
+      // 📦 Main content file upload (image/audio/video)
+      const fileList = Array.from(files); // ✅ convert to array
+      if (fileList.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          files: fileList, // ✅ must be an array for backend
+          fileUrls: fileList.map(file => URL.createObjectURL(file)) // ✅ support multiple previews if needed
+        }));
       }
-    } 
-    // Handle type change (resets files)
-    else if (name === 'type') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        files: [],
-        fileUrls: [],
-      }));
-      setFileError('');
-    } 
-    // Handle all other inputs
-    else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+    } else if (name.startsWith('writers[') && name.endsWith('][photo]')) {
+      // 🖼 Writer photo upload
+      const indexMatch = name.match(/\[(\d+)\]/);
+      if (indexMatch) {
+        const index = parseInt(indexMatch[1]);
+        const updatedWriters = [...formData.writers];
+        if (!updatedWriters[index]) updatedWriters[index] = { name: '', role: '' };
+
+        const photoFile = files[0];
+        updatedWriters[index].photoFile = photoFile;
+        updatedWriters[index].photoUrl = photoFile ? URL.createObjectURL(photoFile) : '';
+
+        setFormData(prev => ({
+          ...prev,
+          writers: updatedWriters
+        }));
+      }
     }
-  };
+  } else {
+    // Text, select, etc.
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  }
+};
+
+
+  // const handleInputChange = (e) => {
+  //   const { name, value, files } = e.target;
+    
+  //   // Handle file input
+  //   if (name === 'files') {
+  //     const selectedFiles = Array.from(files || []);
+  //     if (selectedFiles.length > 0) {
+  //       const error = validateFiles(selectedFiles, formData.type);
+  //       setFileError(error);
+  //       if (!error) {
+  //         setFormData(prev => ({ 
+  //           ...prev, 
+  //           files: selectedFiles,
+  //           fileUrls: selectedFiles.map(file => URL.createObjectURL(file))
+  //         }));
+  //       }
+  //     } else {
+  //       // Clear files when no selection
+  //       setFormData(prev => ({ ...prev, files: [], fileUrls: [] }));
+  //       setFileError('');
+  //     }
+  //   } 
+  //   // Handle type change (resets files)
+  //   else if (name === 'type') {
+  //     setFormData(prev => ({
+  //       ...prev,
+  //       [name]: value,
+  //       files: [],
+  //       fileUrls: [],
+  //     }));
+  //     setFileError('');
+  //   } 
+  //   // Handle all other inputs
+  //   else {
+  //     setFormData(prev => ({ ...prev, [name]: value }));
+  //   }
+  // };
 
   /**
    * Handles changes in writer fields
@@ -494,131 +536,84 @@ export const ContentManager = () => {
   /**
    * Handles the actual file upload process with improved validation
    */
- const confirmUpload = async () => {
+const confirmUpload = async () => {
   setShowUploadConfirmation(false);
   setIsLoading(true);
   setFileError('');
 
   try {
-    // Validate again in case something changed
     const isEditMode = !!editingId;
-    const hasExistingFiles = formData.fileUrls.length > 0;
-    const hasNewFiles = formData.files.length > 0;
-    
-    if (!isEditMode && !hasNewFiles && formData.type !== 'blog') {
-      throw new Error('कृपया कम से कम एक फाइल चुनें | Please select at least one file');
-    }
+    const hasNewFiles =
+      Array.isArray(formData.files) && formData.files.length > 0;
 
-    if (isEditMode && !hasExistingFiles && !hasNewFiles && formData.type !== 'blog') {
-      throw new Error('कृपया फाइल अपडेट करें या मौजूदा फाइल को रखें | Please update file or keep existing file');
-    }
-
-    // Create FormData object
     const form = new FormData();
-    
-    // Append basic fields
+
     form.append('title', formData.title.trim());
     form.append('description', formData.description.trim());
     form.append('category', formData.category);
     form.append('type', formData.type);
 
-    // Handle multiple file uploads only if new files are selected
-    if (hasNewFiles) {
-      formData.files.forEach((file) => {
-        form.append('files', file);
-      });
-    }
-    
-    // Handle existing URLs in edit mode
-    if (hasExistingFiles && isEditMode) {
-      form.append('existingFileUrls', JSON.stringify(formData.fileUrls));
-    }
-
-    // Handle writers data
-    if (formData.writers.length > 0) {
-      // Send writer info as JSON string
-      form.append('writersInfo', JSON.stringify(
-        formData.writers.map(writer => ({
-          name: writer.name,
-          role: writer.role
-        }))
-      ));
-      
-      // Handle writer photos
-      formData.writers.forEach((writer, index) => {
-        if (writer.photoFile) {
-          form.append(`writers[${index}][photo]`, writer.photoFile);
-        }
-      });
+    // ✅ FIXED: Handle single File or multiple Files
+    if (formData.files) {
+      if (Array.isArray(formData.files)) {
+        formData.files.forEach(file => {
+          if (file instanceof File) {
+            form.append('files', file);
+          }
+        });
+      } else if (formData.files instanceof File) {
+        form.append('files', formData.files);
+      }
     }
 
-    // Debug: Log FormData contents
-    console.log("FormData Contents:");
-    for (let [key, value] of form.entries()) {
-      console.log(key, value instanceof File ? `[File: ${value.name}]` : value);
-    }
+    // ✅ Append writers info as JSON
+    const writerMeta = formData.writers.map(writer => ({
+      name: writer.name,
+      role: writer.role
+    }));
+    form.append('writersInfo', JSON.stringify(writerMeta));
 
-    // API call with timeout
-    // const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-    const endpoint = editingId 
-      ? `${API_BASE_URL}/api/content/${editingId}`
-      : `${API_BASE_URL}/api/content`;
-    const method = editingId ? 'PUT' : 'POST';
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
-
-    const response = await fetch(endpoint, {
-      method,
-      body: form,
-      signal: controller.signal
+    // ✅ Append writer photo files
+    formData.writers.forEach((writer, index) => {
+      if (writer.photoFile instanceof File) {
+        form.append(`writers[${index}][photo]`, writer.photoFile);
+      }
     });
 
-    clearTimeout(timeoutId);
+    // ✅ existing files in edit mode
+    if (isEditMode && formData.fileUrls.length > 0) {
+      form.append('existingFileUrls', formData.fileUrls.join(','));
+    }
+
+    // 🛰 Upload
+    const response = await fetch(
+      `${API_BASE_URL}/api/content${isEditMode ? `/${editingId}` : ''}?type=${formData.type}`,
+      {
+        method: isEditMode ? 'PUT' : 'POST',
+        body: form
+      }
+    );
 
     if (!response.ok) {
-      let errorData;
-      try {
-        errorData = await response.json();
-      } catch (e) {
-        errorData = { message: 'Invalid server response' };
-      }
-      throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+      const error = await response.json();
+      throw new Error(error.message || 'Upload failed');
     }
 
     const result = await response.json();
-    
-    if (editingId) {
-      setContent(prev => prev.map(item => 
-        item._id === editingId ? result.data || result : item
-      ));
-      showSuccess('Content updated successfully');
-    } else {
-      setContent(prev => [...prev, result.data || result]);
-      showSuccess('Content added successfully');
-    }
-
+    showSuccess(isEditMode ? 'Content updated successfully' : 'Content uploaded successfully');
     setShowModal(false);
     resetForm();
-  } catch (error) {
-    console.error('Upload Error:', error);
-    
-    let errorMessage = error.message;
-    if (error.name === 'AbortError') {
-      errorMessage = 'Request timed out. Please try again.';
-    } else if (error.message.includes('400')) {
-      errorMessage = 'Invalid data format. Please check your files and try again.';
-    } else if (error.message.includes('413')) {
-      errorMessage = 'File size too large. Please upload smaller files.';
-    } else if (error.message.includes('Network Error')) {
-      errorMessage = 'Network connection failed. Please check your internet.';
-    }
 
-    setFileError(errorMessage);
+  } catch (error) {
+    console.error("Upload error:", error);
+    setFileError(error.message);
   } finally {
     setIsLoading(false);
   }
+
+  console.log('📦 Main files:', formData.files);
 };
+
 
   /**
    * Filters content based on active tab
@@ -903,40 +898,41 @@ export const ContentManager = () => {
                   <label className="flex flex-col items-center px-4 py-2 bg-white rounded-lg border border-gray-300 cursor-pointer hover:bg-gray-50">
                     <FiUpload className="text-gray-600" />
                     <span className="mt-1 text-sm text-gray-600">
-                      {formData.file ? formData.file.name : 'Choose file'}
+                      {formData.files ? formData.files.name : 'Choose file'}
                     </span>
-                    <input 
-                      type="file" 
-                      name="file"
-                      onChange={handleInputChange}
-                      className="hidden"
-                      accept={
-                        formData.type === 'video'
-                          ? 'video/mp4,video/webm'
-                          : formData.type === 'audio'
-                          ? 'audio/mpeg,audio/mp3,audio/wav'
-                          : 'image/jpeg,image/png,image/webp,image/gif'
-                      }                      
-                    />
+                    <input
+                        type="file"
+                        name="files"
+                        onChange={handleInputChange}
+                        accept={
+                          formData.type === 'video'
+                            ? 'video/mp4,video/webm'
+                            : formData.type === 'audio'
+                            ? 'audio/mpeg,audio/mp3,audio/wav'
+                            : 'image/jpeg,image/png,image/webp,image/gif'
+                        }
+                        multiple={formData.type === 'blog' || formData.type === 'news'}
+                      />
+
                   </label>
                 </div>
                 {fileError && (
                   <p className="text-red-500 text-sm mt-1">{fileError}</p>
                 )}
-                {formData.fileUrl && (
+                {formData.fileUrls && (
                   <div className="mt-2">
                     {formData.type === 'video' ? (
                       <video controls className="w-full mt-2 rounded" style={{ maxHeight: '150px' }}>
-                        <source src={formData.fileUrl} type="video/mp4" />
+                        <source src={formData.fileUrls} type="video/mp4" />
                       </video>
                     ) : formData.type === 'audio' ? (
                       <audio controls className="w-full mt-2">
-                        <source src={formData.fileUrl} type="audio/mpeg" />
+                        <source src={formData.fileUrls} type="audio/mpeg" />
                       </audio>
                     ) : (
                       <div className="image-preview-section mt-4 p-2 border rounded bg-gray-50">
                         <img
-                          src={formData.fileUrl}
+                          src={formData.fileUrls}
                           alt="Preview"
                           className="w-full mt-2 rounded"
                           style={{ maxHeight: '150px' }}

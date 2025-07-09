@@ -3,30 +3,18 @@ const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
 
-// Configuration Constants
-const MAX_FILE_SIZE_MB = 100;
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 
-// Supported File Types
-const FILE_TYPES = {
-  blog: ['image/jpeg', 'image/png', 'image/webp'],
-  news: ['image/jpeg', 'image/png', 'image/webp'],
-  video: ['video/mp4', 'video/webm'],
-  audio: ['audio/mpeg', 'audio/wav']
-};
-
-// Helper to delete files
 const deleteFilesIfExist = async (fileUrls) => {
   if (!fileUrls || !Array.isArray(fileUrls)) return;
-  
+
   await Promise.all(
     fileUrls.map(async (url) => {
       if (!url) return;
-      
+
       try {
         const filename = path.basename(url);
         const fullPath = path.join(UPLOADS_DIR, filename);
-        
         if (fs.existsSync(fullPath)) {
           await fs.promises.unlink(fullPath);
         }
@@ -37,40 +25,18 @@ const deleteFilesIfExist = async (fileUrls) => {
   );
 };
 
-// Get file type from URL extension
 const getFileTypeFromUrl = (url) => {
   const ext = path.extname(url).toLowerCase();
   if (['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) return 'image';
   if (['.mp4', '.webm'].includes(ext)) return 'video';
-  if (['.mp3', '.wav'].includes(ext)) return 'audio';
+  if (['.mp3', '.wav', '.m4a'].includes(ext)) return 'audio';
   return 'other';
 };
 
-// Get original filename
-const getOriginalName = (files, url) => {
-  if (!files) return path.basename(url);
-  const file = Object.values(files)
-    .flat()
-    .find(f => `/uploads/${f.filename}` === url);
-  return file?.originalname || path.basename(url);
-};
-
-// Get file size
-const getFileSize = (files, url) => {
-  if (!files) return 0;
-  const file = Object.values(files)
-    .flat()
-    .find(f => `/uploads/${f.filename}` === url);
-  return file?.size || 0;
-};
-
-// Create Content
 const createContent = async (req, res) => {
   try {
-    // Destructure request body
     const { title, description, type, category, writersInfo, existingFileUrls } = req.body;
 
-    // Validate required fields
     if (!title || !description || !type || !category) {
       return res.status(400).json({
         success: false,
@@ -78,106 +44,90 @@ const createContent = async (req, res) => {
       });
     }
 
-    // Process uploaded files
-    const mainFiles = req.files?.['file'] || [];
-    const writerPhotos = req.files?.['writers[0][photo]'] || [];
+    // ✅ Extract uploaded main content files
+    const mainFiles = req.files?.filter(f => f.fieldname === 'files') || [];
 
-    // Combine existing and new file URLs
+    // ✅ Extract writer photo files
+    const writerPhotos = req.files?.filter(f => f.fieldname.startsWith('writers[') && f.fieldname.endsWith('[photo]')) || [];
+
+    // ✅ Merge existing files and new uploaded files
     const fileUrls = [
       ...(existingFileUrls?.split(',') || []),
-      ...mainFiles.map(file => `/uploads/${file.filename}`)
+      ...mainFiles.map(file => `/api/uploads/${file.filename}`)
     ];
 
-    // Process writers data
+    // ✅ Parse writersInfo JSON
     let writers = [];
     try {
-      writers = JSON.parse(writersInfo || '[]').map((writer, index) => ({
-        name: writer.name,
-        role: writer.role,
-        photoUrl: writerPhotos[index] ? `/uploads/${writerPhotos[index].filename}` : null
+      const parsed = JSON.parse(writersInfo || '[]');
+      if (!Array.isArray(parsed)) throw new Error('Invalid format');
+
+      writers = parsed.map((writer, index) => ({
+        name: writer.name || '',
+        role: writer.role || '',
+        photoUrl: writerPhotos[index] ? `/api/uploads/${writerPhotos[index].filename}` : null
       }));
     } catch (err) {
-      console.error('Error parsing writers info:', err);
+      console.error('Error parsing writersInfo:', err);
       return res.status(400).json({
         success: false,
         message: 'Invalid writers data format'
       });
     }
 
-    // Prepare content data
-    const contentData = {
+    // ✅ Prepare file metadata for DB
+    const filesWithMeta = fileUrls.map(url => {
+      const filename = path.basename(url);
+      const file = req.files?.find(f => f.filename === filename);
+
+      return {
+        url,
+        fileType: getFileTypeFromUrl(url),
+        originalName: file?.originalname || filename,
+        size: file?.size || 0,
+        uploadedAt: new Date()
+      };
+    });
+
+    // ✅ Create content in DB
+    const newContent = await Content.create({
       title,
       description,
       type,
       category,
-      files: fileUrls.map(url => ({
-        url,
-        fileType: getFileTypeFromUrl(url),
-        originalName: getOriginalName(req.files, url),
-        size: getFileSize(req.files, url),
-        uploadedAt: new Date()
-      })),
       writers,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    // Save to database
-    const content = await Content.create(contentData);
-
-    return res.status(201).json({
-      success: true,
-      message: "Content created successfully",
-      data: content
+      files: filesWithMeta
     });
 
+    res.status(201).json({
+      success: true,
+      message: 'Content created successfully',
+      data: newContent
+    });
   } catch (err) {
     console.error('Create content error:', err);
 
-    // Cleanup uploaded files if error occurs
-    if (req.files) {
-      const filesToDelete = [
-        ...(req.files['file'] || []).map(f => `/uploads/${f.filename}`),
-        ...(req.files['writers[0][photo]'] || []).map(f => `/uploads/${f.filename}`)
-      ];
-      await deleteFilesIfExist(filesToDelete);
-    }
+    const toDelete = req.files?.map(f => `/api/uploads/${f.filename}`) || [];
+    await deleteFilesIfExist(toDelete);
 
-    // Handle specific error types
-    if (err instanceof mongoose.Error.ValidationError) {
-      const errors = Object.values(err.errors).map(e => e.message);
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors
-      });
-    }
-
-    if (err.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "Content with this title already exists"
-      });
-    }
-
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
-      message: "Internal server error"
+      message: 'Internal server error'
     });
   }
 };
 
-// Get All Content
+// ==========================
+// Other functions (as is)
+// ==========================
+
 const getAllContent = async (req, res) => {
   try {
     const { type, category, page = 1, limit = 10 } = req.query;
     const filter = {};
-    
-    // Build filter
-    if (type && Object.keys(FILE_TYPES).includes(type)) filter.type = type;
+    if (type) filter.type = type;
     if (category && mongoose.isValidObjectId(category)) filter.category = category;
 
-    // Pagination
     const total = await Content.countDocuments(filter);
     const totalPages = Math.ceil(total / limit);
     const results = await Content.find(filter)
@@ -194,7 +144,6 @@ const getAllContent = async (req, res) => {
       total,
       data: results
     });
-
   } catch (err) {
     console.error('Get all content error:', err);
     return res.status(500).json({
@@ -204,154 +153,99 @@ const getAllContent = async (req, res) => {
   }
 };
 
-// Get Content By ID
 const getContentById = async (req, res) => {
   try {
     const { id } = req.params;
-    
     if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid content ID format"
-      });
+      return res.status(400).json({ success: false, message: "Invalid content ID" });
     }
 
     const content = await Content.findById(id).populate('category');
     if (!content) {
-      return res.status(404).json({
-        success: false,
-        message: "Content not found"
-      });
+      return res.status(404).json({ success: false, message: "Content not found" });
     }
 
-    return res.status(200).json({
-      success: true,
-      data: content
-    });
-
+    return res.status(200).json({ success: true, data: content });
   } catch (err) {
     console.error('Get content by ID error:', err);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to retrieve content"
-    });
+    return res.status(500).json({ success: false, message: "Failed to retrieve content" });
   }
 };
 
-// Update Content
 const updateContent = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description, type, category, writersInfo, existingFileUrls } = req.body;
-    const mainFiles = req.files?.['file'] || [];
-    const writerPhotos = req.files?.['writers[0][photo]'] || [];
 
-    // Validate ID
     if (!mongoose.isValidObjectId(id)) {
-      await deleteFilesIfExist(mainFiles.map(f => `/uploads/${f.filename}`));
-      await deleteFilesIfExist(writerPhotos.map(f => `/uploads/${f.filename}`));
-      return res.status(400).json({
-        success: false,
-        message: "Invalid content ID"
-      });
+      return res.status(400).json({ success: false, message: "Invalid content ID" });
     }
 
-    // Find existing content
     const existingContent = await Content.findById(id);
     if (!existingContent) {
-      await deleteFilesIfExist(mainFiles.map(f => `/uploads/${f.filename}`));
-      await deleteFilesIfExist(writerPhotos.map(f => `/uploads/${f.filename}`));
-      return res.status(404).json({
-        success: false,
-        message: "Content not found"
-      });
+      return res.status(404).json({ success: false, message: "Content not found" });
     }
 
-    // Process writers data
+    const mainFiles = req.files?.filter(f => f.fieldname === 'files') || [];
+    const writerPhotos = req.files?.filter(f => f.fieldname.startsWith('writers[')) || [];
+
     let writers = [];
     try {
-      writers = JSON.parse(writersInfo || '[]').map((writer, index) => {
-        const existingWriter = existingContent.writers[index] || {};
-        return {
-          name: writer.name || existingWriter.name,
-          role: writer.role || existingWriter.role,
-          photoUrl: writerPhotos[index] 
-            ? `/uploads/${writerPhotos[index].filename}`
-            : existingWriter.photoUrl
-        };
-      });
+      const parsed = JSON.parse(writersInfo || '[]');
+      writers = parsed.map((writer, index) => ({
+        name: writer.name || '',
+        role: writer.role || '',
+        photoUrl: writerPhotos[index] ? `/api/uploads/${writerPhotos[index].filename}` : existingContent.writers[index]?.photoUrl || null
+      }));
     } catch (err) {
-      console.error('Error parsing writers info:', err);
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid writers data format'
-      });
+      return res.status(400).json({ success: false, message: 'Invalid writers data format' });
     }
 
-    // Prepare update data
-    const updateData = {
-      title: title || existingContent.title,
-      description: description || existingContent.description,
-      type: type || existingContent.type,
-      category: category || existingContent.category,
+    const filesToKeep = existingFileUrls?.split(',') || [];
+    const filesToDelete = existingContent.files.map(f => f.url).filter(url => !filesToKeep.includes(url));
+    await deleteFilesIfExist(filesToDelete);
+
+    const updatedFiles = [
+      ...filesToKeep.map(url => {
+        const filename = path.basename(url);
+        const existing = existingContent.files.find(f => f.url === url);
+        return {
+          url,
+          fileType: getFileTypeFromUrl(url),
+          originalName: existing?.originalName || filename,
+          size: existing?.size || 0,
+          uploadedAt: existing?.uploadedAt || new Date()
+        };
+      }),
+      ...mainFiles.map(file => ({
+        url: `/api/uploads/${file.filename}`,
+        fileType: getFileTypeFromUrl(file.originalname),
+        originalName: file.originalname,
+        size: file.size,
+        uploadedAt: new Date()
+      }))
+    ];
+
+    const updated = await Content.findByIdAndUpdate(id, {
+      title,
+      description,
+      type,
+      category,
       writers,
+      files: updatedFiles,
       updatedAt: new Date()
-    };
-
-    // Handle file updates
-    if (mainFiles.length > 0 || existingFileUrls) {
-      // Delete old files that are being replaced
-      const filesToDelete = existingContent.files
-        .map(f => f.url)
-        .filter(url => !existingFileUrls?.includes(url));
-      
-      await deleteFilesIfExist(filesToDelete);
-
-      // Set new files
-      updateData.files = [
-        ...(existingFileUrls?.split(',') || []),
-        ...mainFiles.map(file => ({
-          url: `/uploads/${file.filename}`,
-          fileType: getFileTypeFromUrl(file.originalname),
-          originalName: file.originalname,
-          size: file.size,
-          uploadedAt: new Date()
-        }))
-      ];
-    }
-
-    // Perform update
-    const updatedContent = await Content.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    ).populate('category');
+    }, { new: true });
 
     return res.status(200).json({
       success: true,
-      message: "Content updated successfully",
-      data: updatedContent
+      message: 'Content updated successfully',
+      data: updated
     });
 
   } catch (err) {
     console.error('Update content error:', err);
-
-    // Cleanup uploaded files if error occurs
-    if (req.files) {
-      const filesToDelete = [
-        ...(req.files['file'] || []).map(f => `/uploads/${f.filename}`),
-        ...(req.files['writers[0][photo]'] || []).map(f => `/uploads/${f.filename}`)
-      ];
-      await deleteFilesIfExist(filesToDelete);
-    }
-
-    if (err instanceof mongoose.Error.ValidationError) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: Object.values(err.errors).map(e => e.message)
-      });
-    }
+    const toDelete = req.files?.map(f => `/api/uploads/${f.filename}`) || [];
+    await deleteFilesIfExist(toDelete);
 
     return res.status(500).json({
       success: false,
@@ -360,35 +254,24 @@ const updateContent = async (req, res) => {
   }
 };
 
-// Delete Content
 const deleteContent = async (req, res) => {
   try {
     const { id } = req.params;
-    
     if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid content ID"
-      });
+      return res.status(400).json({ success: false, message: "Invalid content ID" });
     }
 
     const content = await Content.findByIdAndDelete(id);
     if (!content) {
-      return res.status(404).json({
-        success: false,
-        message: "Content not found"
-      });
+      return res.status(404).json({ success: false, message: "Content not found" });
     }
 
-    // Cleanup files
-    const filesToDelete = content.files.map(f => f.url);
-    await deleteFilesIfExist(filesToDelete);
+    await deleteFilesIfExist(content.files.map(f => f.url));
 
     return res.status(200).json({
       success: true,
       message: "Content deleted successfully"
     });
-
   } catch (err) {
     console.error('Delete content error:', err);
     return res.status(500).json({

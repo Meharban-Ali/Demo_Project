@@ -236,7 +236,6 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
-
 // ✅ 404 Handler
 app.use((req, res) => {
   res.status(404).json({ message: 'Endpoint not found' });

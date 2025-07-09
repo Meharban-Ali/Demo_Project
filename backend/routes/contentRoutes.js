@@ -8,35 +8,35 @@ const {
 } = require('../controllers/contentController');
 
 const { 
-  createContentUpload,
+  createContentUpload, // ✅ multer.any() as middleware
   handleMulterErrors,
   cleanupOnError,
-  contentConfig
 } = require('../middleware/upload');
 
 const { validateContent } = require('../middleware/validation');
-const Content = require('../models/Content'); // Make sure to import Content model
+const Content = require('../models/Content');
 
 const router = express.Router();
 
 /**
- * Middleware for creating new content
+ * ✅ Middleware for creating new content
  */
 const uploadMiddleware = [
   (req, res, next) => {
-    const contentType = req.body.type || 'blog';
-    const upload = createContentUpload(contentType);
-    
-    upload(req, res, (err) => {
+    createContentUpload(req, res, (err) => {
       if (err) return handleMulterErrors(err, req, res, next);
-      
-      // Verify at least 1 content file for new uploads
-      if (!req.files?.files?.length && contentType !== 'blog') {
+
+      const contentType = req.query.type || req.body.type || 'blog';
+
+      // ✅ Check if at least one file uploaded (except for blog)
+      const hasFiles = req.files?.some(f => f.fieldname === 'files');
+      if (!hasFiles && contentType !== 'blog') {
         return res.status(400).json({
           success: false,
           message: 'कृपया कम से कम एक फाइल चुनें | Please select at least one file.'
         });
       }
+
       next();
     });
   },
@@ -44,10 +44,9 @@ const uploadMiddleware = [
 ];
 
 /**
- * Improved Middleware for updating content
+ * ✅ Middleware for updating content
  */
 const updateMiddleware = [
-  // First get existing content to determine type and check files
   async (req, res, next) => {
     try {
       const existingContent = await Content.findById(req.params.id);
@@ -58,21 +57,22 @@ const updateMiddleware = [
         });
       }
 
-      const contentType = req.body.type || existingContent.type || 'blog';
-      req.contentType = contentType; // Store for later use
-      req.existingFiles = existingContent.urls || [existingContent.url].filter(Boolean);
+      req.contentType = req.query.type || req.body.type || existingContent.type || 'blog';
 
-      // If no files in request and no existing files, and content requires files
-      if (!req.files?.files?.length && !req.existingFiles.length && contentType !== 'blog') {
-        return res.status(400).json({
-          success: false,
-          message: 'कृपया फाइल अपडेट करें या मौजूदा फाइल को रखें | Please update file or keep existing file'
-        });
-      }
-
-      const upload = createContentUpload(contentType);
-      upload(req, res, (err) => {
+      createContentUpload(req, res, (err) => {
         if (err) return handleMulterErrors(err, req, res, next);
+
+        const hasNewFiles = req.files?.some(f => f.fieldname === 'files');
+        const existingFileUrls = req.body.existingFileUrls?.split(',') || [];
+        const hasExistingFiles = existingFileUrls.length > 0;
+
+        if (!hasNewFiles && !hasExistingFiles && req.contentType !== 'blog') {
+          return res.status(400).json({
+            success: false,
+            message: 'कृपया फाइल अपडेट करें या मौजूदा फाइल को रखें | Please update file or keep existing file'
+          });
+        }
+
         next();
       });
     } catch (err) {
@@ -82,14 +82,14 @@ const updateMiddleware = [
   validateContent
 ];
 
-// Routes
+// ✅ Routes
 router.post('/', ...uploadMiddleware, createContent, cleanupOnError);
 router.get('/', getAllContent);
 router.get('/:id', getContentById);
 router.put('/:id', ...updateMiddleware, updateContent, cleanupOnError);
 router.delete('/:id', deleteContent);
 
-// Enhanced error handler (remain same as before)
+// ✅ Global Error Handler
 router.use((err, req, res, next) => {
   console.error('Route error:', {
     message: err.message,

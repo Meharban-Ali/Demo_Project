@@ -17,7 +17,7 @@ const getIcon = (type) => {
 };
 
 // ✅ Local fallback image
-const DEFAULT_IMAGE = `${import.meta.env.VITE_API_BASE_URL}/api/uploads/default-preview.jpg`;
+const DEFAULT_IMAGE = `${import.meta.env.VITE_API_BASE_URL}/api/uploads/`;
 
 export const ContentViewer = () => {
   const [content, setContent] = useState([]);

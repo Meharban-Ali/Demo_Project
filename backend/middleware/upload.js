@@ -9,14 +9,14 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// ✅ Generate unique filename
+// ✅ Unique file name generator
 const generateFilename = (file) => {
   const ext = path.extname(file.originalname).toLowerCase();
   const uniqueSuffix = crypto.randomBytes(8).toString('hex');
   return `${uniqueSuffix}-${Date.now()}${ext}`;
 };
 
-// ✅ Content type specific configurations
+// ✅ Supported content types with rules
 const contentConfig = {
   blog: {
     maxFiles: 5,
@@ -40,50 +40,38 @@ const contentConfig = {
   }
 };
 
-// ✅ File filter with content type awareness
-const fileFilter = (contentType) => (req, file, cb) => {
+// ✅ Multer file filter based on content type
+const fileFilter = (req, file, cb) => {
+  const contentType = req.query?.type || req.body?.type || 'blog';
   const config = contentConfig[contentType] || contentConfig.blog;
-  
+
   if (!config.mimeTypes.includes(file.mimetype)) {
-    const errorMsg = `अमान्य फाइल प्रकार। अनुमत प्रकार: ${config.extensions.join(', ')}`;
+    const errorMsg = `अमान्य फाइल प्रकार (${file.originalname})। अनुमत प्रकार: ${config.extensions.join(', ')}`;
     return cb(new Error(errorMsg), false);
   }
+
   cb(null, true);
 };
 
-// ✅ Multer storage config
+// ✅ Multer disk storage config
 const storage = multer.diskStorage({
   destination: uploadDir,
   filename: (req, file, cb) => cb(null, generateFilename(file))
 });
 
-// ✅ Constants
 const MAX_FILE_SIZE_MB = 100;
 
-// ✅ Updated content upload middleware to match frontend fields
-const createContentUpload = (contentType) => {
-  const config = contentConfig[contentType] || contentConfig.blog;
-  
-  return multer({
-    storage,
-    fileFilter: fileFilter(contentType),
-    limits: {
-      fileSize: MAX_FILE_SIZE_MB * 1024 * 1024,
-      files: config.maxFiles + 4 // Main files + max writer photos
-    }
-  }).fields([
-    { 
-      name: 'file', // Changed from 'files' to match frontend
-      maxCount: config.maxFiles 
-    },
-    { 
-      name: 'writers[0][photo]', // Exactly matches frontend field name
-      maxCount: 4 
-    }
-  ]);
-};
+// ✅ Main upload middleware
+const createContentUpload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: MAX_FILE_SIZE_MB * 1024 * 1024, // 100MB
+    files: 10 // 5 main + 4 writer photos + buffer
+  }
+}).any(); // ✅ Allow all dynamic fields (writers[0][photo], etc.)
 
-// ✅ Enhanced error handling middleware
+// ✅ Multer error handler middleware
 const handleMulterErrors = (err, req, res, next) => {
   const messages = {
     LIMIT_FILE_SIZE: {
@@ -94,10 +82,6 @@ const handleMulterErrors = (err, req, res, next) => {
       en: 'Too many files uploaded.',
       hi: 'बहुत अधिक फाइलें अपलोड की गईं।'
     },
-    INVALID_FILE_TYPE: {
-      en: 'Invalid file type.',
-      hi: 'अमान्य फाइल प्रकार।'
-    },
     UNEXPECTED_FIELD: {
       en: 'Unexpected file field detected.',
       hi: 'अनपेक्षित फाइल फील्ड मिला।'
@@ -107,12 +91,11 @@ const handleMulterErrors = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     const lang = req.acceptsLanguages('hi') ? 'hi' : 'en';
     const message = messages[err.code]?.[lang] || err.message;
-    
-    return res.status(400).json({ 
-      success: false, 
+
+    return res.status(400).json({
+      success: false,
       message,
-      errorType: err.code,
-      expectedFields: ['file', 'writers[0][photo]'] // Updated field names
+      errorType: err.code
     });
   }
 
@@ -127,13 +110,11 @@ const handleMulterErrors = (err, req, res, next) => {
   next();
 };
 
-// ✅ Updated cleanup middleware for new field names
+// ✅ Cleanup uploaded files if any error occurs
 const cleanupOnError = async (err, req, res, next) => {
   try {
-    const files = req.files 
-      ? [...(req.files.file || []), ...(req.files['writers[0][photo]'] || [])] 
-      : [];
-      
+    const files = req.files ? req.files : [];
+
     await Promise.all(
       files.map(async (f) => {
         const fullPath = path.join(uploadDir, f.filename);
@@ -143,12 +124,12 @@ const cleanupOnError = async (err, req, res, next) => {
       })
     );
   } catch (cleanupErr) {
-    console.error('Cleanup failed:', cleanupErr);
+    console.error('❌ Cleanup failed:', cleanupErr);
   }
   next(err);
 };
 
-// ✅ Export everything
+// ✅ Exports
 module.exports = {
   createContentUpload,
   handleMulterErrors,

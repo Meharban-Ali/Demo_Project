@@ -19,7 +19,7 @@ export const Navbar = () => {
   const [isNewsClicked, setIsNewsClicked] = useState(false); // For mobile click
 
   const menuItems = [
-    { name: "लेख  | इंटरव्यू ", link: "/sampadkiye", icon: <FaInfoCircle className="mr-2" /> },
+    { name: "आर्टिकल  | इंटरव्यू ", link: "/sampadkiye", icon: <FaInfoCircle className="mr-2" /> },
     { name: "पॉडकास्ट", link: "/podcast", icon: <FaPodcast className="mr-2" /> },
     { name: "डॉक्यूमेंट्री", link: "/documentary", icon: <GrDocumentSound className='mr-2'/> }
   ];

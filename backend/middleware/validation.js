@@ -40,7 +40,7 @@ const ALLOWED_FILE_TYPES = {
 
 // ✅ Main validation middleware
 exports.validateContent = [
-  // 1. First validate text fields (title, description, etc.)
+  // 1. Validate fields
   body('title')
     .trim()
     .notEmpty().withMessage('शीर्षक आवश्यक है')
@@ -73,7 +73,7 @@ exports.validateContent = [
     .isIn(['blog', 'news', 'video', 'audio'])
     .withMessage('अमान्य कंटेंट प्रकार'),
 
-  // 2. Then check file upload (after multer processes it)
+  // 2. Custom file validation (after multer)
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -87,22 +87,23 @@ exports.validateContent = [
       });
     }
 
-    const contentType = req.body.type.toLowerCase();
-    const file = req.file; // Multer should have processed this
+    const contentType = req.body.type?.toLowerCase();
+    const fileArray = req.files?.files;
+    const file = Array.isArray(fileArray) && fileArray.length > 0 ? fileArray[0] : null;
 
-    // Case 1: New content (must have a file)
-    if (!req.body.id && !file) {
+    // Case 1: New content (non-blog) requires at least one file
+    if (!req.body.id && !file && contentType !== 'blog') {
       return res.status(400).json({
         success: false,
         error: {
           message: errorMessages.FILE_REQUIRED(contentType),
-          param: 'file',
+          param: 'files',
           location: 'body'
         }
       });
     }
 
-    // Case 2: File was uploaded (validate its type/size)
+    // Case 2: Validate file if present
     if (file) {
       const ext = path.extname(file.originalname).toLowerCase();
       const mime = file.mimetype;
@@ -113,18 +114,18 @@ exports.validateContent = [
           success: false,
           error: {
             message: errorMessages.FILE_TYPE(contentType),
-            param: 'file',
+            param: 'files',
             location: 'body'
           }
         });
       }
 
-      if (file.size > 100 * 1024 * 1024) { // 100MB
+      if (file.size > 100 * 1024 * 1024) {
         return res.status(400).json({
           success: false,
           error: {
             message: errorMessages.FILE_SIZE,
-            param: 'file',
+            param: 'files',
             location: 'body'
           }
         });
@@ -135,7 +136,7 @@ exports.validateContent = [
   }
 ];
 
-// ✅ Update validation (no file required)
+// ✅ Optional update validation (used in PUT route)
 exports.validateContentUpdate = [
   body('title')
     .optional()

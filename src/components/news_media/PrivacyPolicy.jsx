@@ -6,7 +6,7 @@ export const PrivacyPolicy = () => {
       <div className="max-w-4xl mx-auto">
         {/* Header Section */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-4">Privacy Policy</h1>
+          <h1 className="text-4xl font-bold text-orange-500 dark:text-blue-400 mb-4">Privacy Policy</h1>
           <p className="text-lg text-gray-600 dark:text-gray-300">
             Last Updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
@@ -14,7 +14,7 @@ export const PrivacyPolicy = () => {
 
         {/* Introduction Section */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-4 text-blue-600 dark:text-blue-400">Introduction</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-orange-500 dark:text-blue-400">Introduction</h2>
           <p className="mb-4">
             At Raviopedia, we are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website.
           </p>
@@ -25,7 +25,7 @@ export const PrivacyPolicy = () => {
 
         {/* Information Collection Section */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-4 text-blue-600 dark:text-blue-400">Information We Collect</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-orange-500 dark:text-blue-400">Information We Collect</h2>
           <p className="mb-4">
             We may collect information about you in a variety of ways. The information we may collect on the Site includes:
           </p>
@@ -50,7 +50,7 @@ export const PrivacyPolicy = () => {
 
         {/* Use of Information Section */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-4 text-blue-600 dark:text-blue-400">Use of Your Information</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-orange-500 dark:text-blue-400">Use of Your Information</h2>
           <p className="mb-4">
             Having accurate information about you permits us to provide you with a smooth, efficient, and customized experience. Specifically, we may use information collected about you via the Site to:
           </p>
@@ -73,7 +73,7 @@ export const PrivacyPolicy = () => {
 
         {/* Data Security Section */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-4 text-blue-600 dark:text-blue-400">Security of Your Information</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-orange-500 dark:text-blue-400">Security of Your Information</h2>
           <p className="mb-4">
             We use administrative, technical, and physical security measures to help protect your personal information. While we have taken reasonable steps to secure the personal information you provide to us, please be aware that despite our efforts, no security measures are perfect or impenetrable.
           </p>
@@ -92,7 +92,7 @@ export const PrivacyPolicy = () => {
 
         {/* Policy Updates Section */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-4 text-blue-600 dark:text-blue-400">Policy Updates</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-orange-500 dark:text-blue-400">Policy Updates</h2>
           <p className="mb-4">
             This Privacy Policy may be updated from time to time to reflect changes to our information practices. If we make any material changes, we will notify you by email (sent to the email address specified in your account) or by means of a notice on this Site prior to the change becoming effective.
           </p>
@@ -103,13 +103,13 @@ export const PrivacyPolicy = () => {
 
         {/* Contact Information Section */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
-          <h2 className="text-2xl font-semibold mb-4 text-blue-600 dark:text-blue-400">Contact Us</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-orange-500 dark:text-blue-400">Contact Us</h2>
           <p className="mb-4">
             If you have questions or comments about this Privacy Policy, please contact us at:
           </p>
           
           <div className="ml-6 space-y-2">
-            <p><span className="font-medium">Email:</span> privacy@raviopedia.com</p>
+            <p><span className="font-medium">Email:</span> raviopedia@gmail.com</p>
             <p><span className="font-medium">Phone:</span> +91-8804922607</p>
             <p><span className="font-medium">Address:</span> Gaya, Bihar 823001, India</p>
           </div>

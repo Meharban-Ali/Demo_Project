@@ -46,7 +46,7 @@ export const Footer = () => {
             </p>
             <ul className="socials flex space-x-4">
               <li>
-                <Link to="https://www.facebook.com/raviopedia" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-all hover:scale-125">
+                <Link to="https://www.facebook.com/raviopediaofficial" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-all hover:scale-125">
                   <FaFacebookF className="w-5 h-5" />
                 </Link>
               </li>
