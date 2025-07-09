@@ -128,7 +128,7 @@ export const Footer = () => {
 
         {/* Copyright */}
         <div className="copyright-wrapper border-t border-gray-200 dark:border-gray-700 mt-8 pt-6 text-center">
-          <p className="text-sm">
+          <p className="text-sm"> Designed by Meharban(7505195491)
             &copy; 2025 <Link to="/" className="text-blue-600 dark:text-blue-400 hover:underline">Raviopedia.</Link>
             <span> All Right Reserved</span>
           </p>
