@@ -8,12 +8,12 @@ const {
 } = require('../controllers/contentController');
 
 const { 
-  createContentUpload, // ✅ multer.any() as middleware
+  createContentUpload,
   handleMulterErrors,
   cleanupOnError,
 } = require('../middleware/upload');
 
-const { validateContent } = require('../middleware/validation');
+const { validateContent, validateContentUpdate } = require('../middleware/validation');
 const Content = require('../models/Content');
 
 const router = express.Router();
@@ -22,24 +22,8 @@ const router = express.Router();
  * ✅ Middleware for creating new content
  */
 const uploadMiddleware = [
-  (req, res, next) => {
-    createContentUpload(req, res, (err) => {
-      if (err) return handleMulterErrors(err, req, res, next);
-
-      const contentType = req.query.type || req.body.type || 'blog';
-
-      // ✅ Check if at least one file uploaded (except for blog)
-      const hasFiles = req.files?.some(f => f.fieldname === 'files');
-      if (!hasFiles && contentType !== 'blog') {
-        return res.status(400).json({
-          success: false,
-          message: 'कृपया कम से कम एक फाइल चुनें | Please select at least one file.'
-        });
-      }
-
-      next();
-    });
-  },
+  createContentUpload(),   // <-- Function ko call kiya
+  handleMulterErrors,
   validateContent
 ];
 
@@ -57,29 +41,42 @@ const updateMiddleware = [
         });
       }
 
-      req.contentType = req.query.type || req.body.type || existingContent.type || 'blog';
+      req.contentType = req.body.type || existingContent.type || 'blog';
 
-      createContentUpload(req, res, (err) => {
-        if (err) return handleMulterErrors(err, req, res, next);
-
-        const hasNewFiles = req.files?.some(f => f.fieldname === 'files');
-        const existingFileUrls = req.body.existingFileUrls?.split(',') || [];
-        const hasExistingFiles = existingFileUrls.length > 0;
-
-        if (!hasNewFiles && !hasExistingFiles && req.contentType !== 'blog') {
+      let existingFileUrls = [];
+      if (req.body.existingFileUrls) {
+        try {
+          existingFileUrls = JSON.parse(req.body.existingFileUrls);
+          if (!Array.isArray(existingFileUrls)) {
+            throw new Error('Invalid existingFileUrls format');
+          }
+        } catch (parseErr) {
           return res.status(400).json({
             success: false,
-            message: 'कृपया फाइल अपडेट करें या मौजूदा फाइल को रखें | Please update file or keep existing file'
+            message: 'Invalid existingFileUrls format'
           });
         }
+      }
 
-        next();
-      });
+      const hasNewFiles = req.files && (req.files.files || req.files['files[]']) && 
+        (req.files.files.length > 0 || req.files['files[]'].length > 0);
+      const hasExistingFiles = existingFileUrls.length > 0;
+
+      if (!hasNewFiles && !hasExistingFiles && req.contentType !== 'blog') {
+        return res.status(400).json({
+          success: false,
+          message: 'कृपया फाइल अपडेट करें या मौजूदा फाइल को रखें | Please update file or keep existing file'
+        });
+      }
+
+      next();
     } catch (err) {
       next(err);
     }
   },
-  validateContent
+  createContentUpload(),  // <-- Function call added here too
+  handleMulterErrors,
+  validateContentUpdate
 ];
 
 // ✅ Routes
@@ -112,12 +109,15 @@ router.use((err, req, res, next) => {
   const lang = req.acceptsLanguages('hi') ? 'hi' : 'en';
   const messageObj = messages[err.errorType] || messages.default;
   
-  res.status(err.status || 500).json({
-    success: false,
-    message: messageObj[lang],
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined,
-    errorType: err.errorType
-  });
+  // Make sure we always send a response
+  if (!res.headersSent) {
+    res.status(err.status || 500).json({
+      success: false,
+      message: messageObj[lang],
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+      errorType: err.errorType
+    });
+  }
 });
 
 module.exports = router;

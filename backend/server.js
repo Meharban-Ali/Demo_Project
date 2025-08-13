@@ -18,7 +18,7 @@ const app = express();
 // ✅ CORS Configuration
 
 const allowedOrigins = [
-  'http://localhost:5173',        // dev mode
+  'http://localhost:5174',        // dev mode
   'https://raviopedia.in',        // ✅ production domain
   'https://www.raviopedia.in'     // ✅ with www
 ];
@@ -71,8 +71,8 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 const customSanitize = (req, res, next) => {
   try {

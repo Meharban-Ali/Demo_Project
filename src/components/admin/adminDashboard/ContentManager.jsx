@@ -1,72 +1,45 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { FiEdit2, FiTrash2, FiUpload, FiPlus, FiX, FiArrowLeft, FiCheckCircle, FiPlay } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiUpload, FiPlus, FiX, FiArrowLeft, FiCheckCircle } from 'react-icons/fi';
 import { FaNewspaper, FaVideo, FaFileAlt, FaMusic } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 
 export const ContentManager = () => {
-  // Navigation hook
   const navigate = useNavigate();
-
-  // State for active tab (blogs, news, video, audio)
   const [activeTab, setActiveTab] = useState('blogs');
-  
-  // State for content items
   const [content, setContent] = useState([]);
-  
-  // Loading state
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Modal visibility state
   const [showModal, setShowModal] = useState(false);
-  
-  // ID of item being edited
   const [editingId, setEditingId] = useState(null);
-  
-  // Form data state (updated for multiple files)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: '',
-    type: 'blog', // Default to blog
-    files: [],    // Array for multiple files
-    fileUrls: [], // Array for multiple file URLs
-    writers: []   // Array for writers
+    type: 'blog',
+    files: [],
+    fileUrls: [],
+    writers: [],
   });
-
-  // Mobile detection state
   const [isMobile, setIsMobile] = useState(false);
-  
-  // Categories state
   const [categories, setCategories] = useState([]);
-  
-  // Delete confirmation dialog state
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  
-  // Upload confirmation dialog state
   const [showUploadConfirmation, setShowUploadConfirmation] = useState(false);
-  
-  // Success message state
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  
-  // Currently playing media item
-  const [playingItem, setPlayingItem] = useState(null);
-  
-  // File validation error state
   const [fileError, setFileError] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const abortControllerRef = useRef(null);
 
-  // Count content by type
   const contentCounts = {
     blogs: Array.isArray(content) ? content.filter(item => item?.type === 'blog').length : 0,
     news: Array.isArray(content) ? content.filter(item => item?.type === 'news').length : 0,
     video: Array.isArray(content) ? content.filter(item => item?.type === 'video').length : 0,
-    audio: Array.isArray(content) ? content.filter(item => item?.type === 'audio').length : 0
+    audio: Array.isArray(content) ? content.filter(item => item?.type === 'audio').length : 0,
   };
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://raviopedia.in';
-  // Effect for mobile detection
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -74,7 +47,6 @@ export const ContentManager = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Effect to fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       setIsLoading(true);
@@ -82,6 +54,7 @@ export const ContentManager = () => {
         const response = await fetch(`${API_BASE_URL}/api/categories`);
         if (!response.ok) throw new Error('Failed to fetch categories');
         const data = await response.json();
+        console.log('Categories:', data); // Log categories for debugging
         setCategories(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Error fetching categories:', err);
@@ -92,16 +65,15 @@ export const ContentManager = () => {
     fetchCategories();
   }, []);
 
-  // Effect to fetch content
   useEffect(() => {
     const fetchContent = async () => {
       setIsLoading(true);
       try {
-         const response = await fetch(`${API_BASE_URL}/api/content`);
+        const response = await fetch(`${API_BASE_URL}/api/content`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
-        const contentData = data.data || data.content || (Array.isArray(data) ? data : [data].filter(Boolean));
-        setContent(Array.isArray(contentData) ? contentData : [contentData]);
+        const contentData = data.data || data.content || (Array.isArray(data) ? data : []);
+        setContent(Array.isArray(contentData) ? contentData : []);
       } catch (err) {
         console.error('Error fetching content:', err);
         setContent([]);
@@ -112,65 +84,50 @@ export const ContentManager = () => {
     fetchContent();
   }, []);
 
-  /**
-   * Validates a single file (for writer photos)
-   * @param {File} file - The file to validate
-   * @param {string} type - Content type (blog, news, video, audio)
-   * @returns {string} Error message if validation fails, empty string if valid
-   */
   const validateFile = (file, type) => {
     if (!file) return 'No file selected';
 
     const validTypes = {
-      blog: { 
+      blog: {
         mime: ['image/jpeg', 'image/png', 'image/webp'],
         ext: ['jpg', 'jpeg', 'png', 'webp'],
-        maxSize: 100 * 1024 * 1024 // 100MB
+        maxSize: 100 * 1024 * 1024,
       },
-      news: { 
+      news: {
         mime: ['image/jpeg', 'image/png', 'image/webp'],
         ext: ['jpg', 'jpeg', 'png', 'webp'],
-        maxSize: 100 * 1024 * 1024 // 100MB
+        maxSize: 100 * 1024 * 1024,
       },
       video: {
         mime: ['video/mp4', 'video/webm'],
         ext: ['mp4', 'webm'],
-        maxSize: 100 * 1024 * 1024 // 100MB
+        maxSize: 100 * 1024 * 1024,
       },
       audio: {
         mime: ['audio/mpeg', 'audio/wav'],
         ext: ['mp3', 'wav'],
-        maxSize: 100 * 1024 * 1024 // 100MB
-      }
+        maxSize: 100 * 1024 * 1024,
+      },
     };
 
     const allowed = validTypes[type] || validTypes.blog;
     const fileExt = file.name.split('.').pop().toLowerCase();
-    
-    // Check MIME type
+
     if (!allowed.mime.includes(file.type)) {
       return `Invalid file type (${file.name}). Only ${allowed.ext.join(', ')} are allowed`;
     }
 
-    // Check file extension
     if (!allowed.ext.includes(fileExt)) {
       return `Invalid file extension (${file.name}). Only ${allowed.ext.join(', ')} are allowed`;
     }
 
-    // Check file size
     if (file.size > allowed.maxSize) {
-      return `File size (${file.name}) should not exceed ${Math.floor(allowed.maxSize/(1024*1024))}MB`;
+      return `File size (${file.name}) should not exceed ${Math.floor(allowed.maxSize / (1024 * 1024))}MB`;
     }
 
     return '';
   };
 
-  /**
-   * Validates multiple files based on content type
-   * @param {Array} files - Array of File objects
-   * @param {string} type - Content type (blog, news, video, audio)
-   * @returns {string} Error message if validation fails, empty string if valid
-   */
   const validateFiles = (files, type) => {
     if (!files || files.length === 0) {
       return 'कृपया कम से कम एक फाइल चुनें | Please select at least one file';
@@ -181,230 +138,152 @@ export const ContentManager = () => {
     }
 
     const validTypes = {
-      blog: { 
+      blog: {
         mime: ['image/jpeg', 'image/png', 'image/webp'],
         ext: ['jpg', 'jpeg', 'png', 'webp'],
-        maxSize: 100 * 1024 * 1024, // 100MB
-        maxCount: 5
+        maxSize: 100 * 1024 * 1024,
+        maxCount: 5,
       },
-      news: { 
+      news: {
         mime: ['image/jpeg', 'image/png', 'image/webp'],
         ext: ['jpg', 'jpeg', 'png', 'webp'],
-        maxSize: 100 * 1024 * 1024, // 100MB
-        maxCount: 5
+        maxSize: 100 * 1024 * 1024,
+        maxCount: 5,
       },
       video: {
         mime: ['video/mp4', 'video/webm'],
         ext: ['mp4', 'webm'],
-        maxSize: 100 * 1024 * 1024, // 100MB
-        maxCount: 1
+        maxSize: 100 * 1024 * 1024,
+        maxCount: 1,
       },
       audio: {
         mime: ['audio/mpeg', 'audio/wav'],
         ext: ['mp3', 'wav'],
-        maxSize: 100 * 1024 * 1024, // 100MB
-        maxCount: 1
-      }
+        maxSize: 100 * 1024 * 1024,
+        maxCount: 1,
+      },
     };
 
     const allowed = validTypes[type] || validTypes.blog;
 
-    // Check if number of files exceeds allowed count
     if (files.length > allowed.maxCount) {
       return `आप अधिकतम ${allowed.maxCount} फाइलें अपलोड कर सकते हैं | You can upload maximum ${allowed.maxCount} files`;
     }
 
-    // Validate each file
     for (const file of files) {
-      const fileExt = file.name.split('.').pop().toLowerCase();
-      
-      // Check MIME type
-      if (!allowed.mime.includes(file.type)) {
-        return `अमान्य फाइल प्रकार (${file.name}) | Invalid file type (${file.name}). केवल ${allowed.ext.join(', ')} स्वीकार्य हैं | Only ${allowed.ext.join(', ')} are allowed`;
-      }
-
-      // Check file extension
-      if (!allowed.ext.includes(fileExt)) {
-        return `अमान्य फाइल एक्सटेंशन (${file.name}) | Invalid file extension (${file.name}). केवल ${allowed.ext.join(', ')} स्वीकार्य हैं | Only ${allowed.ext.join(', ')} are allowed`;
-      }
-
-      // Check file size
-      if (file.size > allowed.maxSize) {
-        return `फाइल का आकार (${file.name}) ${Math.floor(allowed.maxSize/(1024*1024))}MB से अधिक नहीं होना चाहिए | File size (${file.name}) should not exceed ${Math.floor(allowed.maxSize/(1024*1024))}MB`;
-      }
+      const error = validateFile(file, type);
+      if (error) return error;
     }
 
     return '';
   };
 
-  /**
-   * Handles input changes for all form fields
-   * @param {Object} e - Event object
-   */
-const handleInputChange = (e) => {
-  const { name, value, type, files } = e.target;
+  const handleInputChange = (e) => {
+    const { name, value, type, files } = e.target;
 
-  if (type === 'file') {
-    if (name === 'files') {
-      // 📦 Main content file upload (image/audio/video)
-      const fileList = Array.from(files); // ✅ convert to array
-      if (fileList.length > 0) {
+    if (type === 'file') {
+      if (name === 'files') {
+        const fileList = Array.from(files);
+        const error = validateFiles(fileList, formData.type);
+        if (error) {
+          setFileError(error);
+          return;
+        }
         setFormData(prev => ({
           ...prev,
-          files: fileList, // ✅ must be an array for backend
-          fileUrls: fileList.map(file => URL.createObjectURL(file)) // ✅ support multiple previews if needed
+          files: fileList,
+          fileUrls: fileList.map(file => URL.createObjectURL(file)),
         }));
-      }
-    } else if (name.startsWith('writers[') && name.endsWith('][photo]')) {
-      // 🖼 Writer photo upload
-      const indexMatch = name.match(/\[(\d+)\]/);
-      if (indexMatch) {
-        const index = parseInt(indexMatch[1]);
-        const updatedWriters = [...formData.writers];
-        if (!updatedWriters[index]) updatedWriters[index] = { name: '', role: '' };
+        setFileError('');
+      } else if (name.startsWith('writers[') && name.endsWith('][photo]')) {
+        const indexMatch = name.match(/\[(\d+)\]/);
+        if (indexMatch) {
+          const index = parseInt(indexMatch[1]);
+          const updatedWriters = [...formData.writers];
+          if (!updatedWriters[index]) updatedWriters[index] = { name: '', role: '' };
 
-        const photoFile = files[0];
-        updatedWriters[index].photoFile = photoFile;
-        updatedWriters[index].photoUrl = photoFile ? URL.createObjectURL(photoFile) : '';
+          const photoFile = files[0];
+          const error = validateFile(photoFile, 'blog'); // Use 'blog' validation for writer photos
+          if (error) {
+            setFileError(error);
+            return;
+          }
+          updatedWriters[index].photoFile = photoFile;
+          updatedWriters[index].photoUrl = photoFile ? URL.createObjectURL(photoFile) : '';
 
-        setFormData(prev => ({
-          ...prev,
-          writers: updatedWriters
-        }));
+          setFormData(prev => ({
+            ...prev,
+            writers: updatedWriters,
+          }));
+          setFileError('');
+        }
       }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
     }
-  } else {
-    // Text, select, etc.
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  }
-};
+  };
 
-
-  // const handleInputChange = (e) => {
-  //   const { name, value, files } = e.target;
-    
-  //   // Handle file input
-  //   if (name === 'files') {
-  //     const selectedFiles = Array.from(files || []);
-  //     if (selectedFiles.length > 0) {
-  //       const error = validateFiles(selectedFiles, formData.type);
-  //       setFileError(error);
-  //       if (!error) {
-  //         setFormData(prev => ({ 
-  //           ...prev, 
-  //           files: selectedFiles,
-  //           fileUrls: selectedFiles.map(file => URL.createObjectURL(file))
-  //         }));
-  //       }
-  //     } else {
-  //       // Clear files when no selection
-  //       setFormData(prev => ({ ...prev, files: [], fileUrls: [] }));
-  //       setFileError('');
-  //     }
-  //   } 
-  //   // Handle type change (resets files)
-  //   else if (name === 'type') {
-  //     setFormData(prev => ({
-  //       ...prev,
-  //       [name]: value,
-  //       files: [],
-  //       fileUrls: [],
-  //     }));
-  //     setFileError('');
-  //   } 
-  //   // Handle all other inputs
-  //   else {
-  //     setFormData(prev => ({ ...prev, [name]: value }));
-  //   }
-  // };
-
-  /**
-   * Handles changes in writer fields
-   * @param {number} index - Writer index
-   * @param {string} field - Field name (name/role)
-   * @param {string} value - New value
-   */
   const handleWriterChange = (index, field, value) => {
     const updatedWriters = [...formData.writers];
     updatedWriters[index] = { ...updatedWriters[index], [field]: value };
     setFormData(prev => ({ ...prev, writers: updatedWriters }));
   };
 
-  /**
-   * Handles writer photo file changes
-   * @param {number} index - Writer index
-   * @param {Object} e - Event object
-   */
   const handleWriterFileChange = (index, e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const error = validateFile(file, formData.type);
+      const error = validateFile(file, 'blog'); // Use 'blog' validation for writer photos
       if (error) {
         setFileError(`Writer ${index + 1} image: ${error}`);
         return;
       }
-      
+
       const updatedWriters = [...formData.writers];
       updatedWriters[index] = {
         ...updatedWriters[index],
         photoFile: file,
-        photoUrl: URL.createObjectURL(file)
+        photoUrl: URL.createObjectURL(file),
       };
       setFormData(prev => ({ ...prev, writers: updatedWriters }));
       setFileError('');
     }
   };
 
-  /**
-   * Adds a new writer to the form
-   */
   const addWriter = () => {
     if (formData.writers.length < 4) {
       setFormData(prev => ({
         ...prev,
-        writers: [...prev.writers, { name: '', role: '', photoFile: null, photoUrl: '' }]
+        writers: [...prev.writers, { name: '', role: '', photoFile: null, photoUrl: '' }],
       }));
     }
   };
 
-  /**
-   * Removes a writer from the form
-   * @param {number} index - Index of writer to remove
-   */
   const removeWriter = (index) => {
     const updatedWriters = formData.writers.filter((_, i) => i !== index);
     setFormData(prev => ({ ...prev, writers: updatedWriters }));
   };
 
-  /**
-   * Resets the form to initial state
-   */
   const resetForm = () => {
     setFormData({
       title: '',
       description: '',
       category: '',
-      type: activeTab === 'video' ? 'video' : 
-            activeTab === 'audio' ? 'audio' : 
+      type: activeTab === 'video' ? 'video' :
+            activeTab === 'audio' ? 'audio' :
             activeTab === 'news' ? 'news' : 'blog',
       files: [],
       fileUrls: [],
-      writers: []
+      writers: [],
     });
     setFileError('');
   };
 
-  /**
-   * Handles form submission with improved file validation
-   * @param {Object} e - Event object
-   */
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Validate required fields
     if (!formData.title.trim()) {
       setFileError('शीर्षक आवश्यक है | Title is required');
       return;
@@ -420,15 +299,14 @@ const handleInputChange = (e) => {
       return;
     }
 
-    // Improved file validation logic
     const isEditMode = !!editingId;
     const requiresNewFile = !isEditMode && formData.type !== 'blog';
     const hasExistingFiles = formData.fileUrls.length > 0;
     const hasNewFiles = formData.files.length > 0;
-    
+
     if (requiresNewFile && !hasNewFiles) {
       let fileTypeName = 'फाइल | file';
-      switch(formData.type) {
+      switch (formData.type) {
         case 'blog':
         case 'news':
           fileTypeName = 'इमेज | image';
@@ -444,66 +322,66 @@ const handleInputChange = (e) => {
       return;
     }
 
-    // Additional check for edit mode - either existing or new files required
     if (isEditMode && !hasExistingFiles && !hasNewFiles && formData.type !== 'blog') {
       setFileError('कृपया फाइल अपडेट करें या मौजूदा फाइल को रखें | Please update file or keep existing file');
       return;
     }
 
-    // Show upload confirmation dialog
     setShowUploadConfirmation(true);
   };
 
-  /**
-   * Prepares form for editing an existing item
-   * @param {Object} item - Content item to edit
-   */
+  const getFullUrl = (url) => url ? (url.startsWith('http') ? url : `${API_BASE_URL}${url.replace(/^\/api\/uploads/, '/uploads')}`) : '';
+
   const handleEdit = (item) => {
     if (!item || typeof item !== 'object') {
       console.error('Invalid item provided for editing');
       return;
     }
-    
-    setEditingId(item._id);
+
+    const mediaUrls = Array.isArray(item.fileUrls) && item.fileUrls.length > 0
+      ? item.fileUrls
+      : item.files && Array.isArray(item.files)
+        ? item.files.map(f => f.url)
+        : [item.url].filter(Boolean);
+
+    const fullMediaUrls = mediaUrls.map(getFullUrl);
+
+    const writers = (item.writers || []).map(writer => ({
+      ...writer,
+      photoUrl: getFullUrl(writer.photoUrl),
+      photoFile: null,
+    }));
+
+    setEditingId(item._id || item.id);
     setFormData({
       title: item.title || '',
       description: item.description || '',
       category: item.category?._id || item.category || '',
       type: item.type || 'blog',
       files: [],
-      fileUrls: Array.isArray(item.urls) ? item.urls : [item.url || item.fileUrl || ''],
-      writers: item.writers || []
+      fileUrls: fullMediaUrls,
+      writers,
     });
     setFileError('');
     setShowModal(true);
   };
 
-  /**
-   * Prepares form for adding new content
-   */
   const handleAddNewContent = () => {
     setEditingId(null);
     resetForm();
     setShowModal(true);
   };
 
-  /**
-   * Initiates delete process
-   * @param {string} id - ID of item to delete
-   */
   const handleDelete = (id) => {
     setItemToDelete(id);
     setShowDeleteConfirmation(true);
   };
 
-  /**
-   * Confirms and executes content deletion
-   */
   const confirmDelete = async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/content/${itemToDelete}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       });
 
       if (!response.ok) throw new Error('Failed to delete content');
@@ -520,10 +398,6 @@ const handleInputChange = (e) => {
     }
   };
 
-  /**
-   * Shows success message
-   * @param {string} message - Success message to display
-   */
   const showSuccess = (message) => {
     setSuccessMessage(message);
     setShowSuccessMessage(true);
@@ -533,94 +407,127 @@ const handleInputChange = (e) => {
     }, 3000);
   };
 
-  /**
-   * Handles the actual file upload process with improved validation
-   */
-const confirmUpload = async () => {
-  setShowUploadConfirmation(false);
-  setIsLoading(true);
-  setFileError('');
+  const confirmUpload = async () => {
+    setShowUploadConfirmation(false);
+    setIsUploading(true);
+    setIsLoading(true);
+    setFileError('');
 
-  try {
-    const isEditMode = !!editingId;
-    const hasNewFiles =
-      Array.isArray(formData.files) && formData.files.length > 0;
+    abortControllerRef.current = new AbortController();
+    const { signal } = abortControllerRef.current;
 
-    const form = new FormData();
+    try {
+      const isEditMode = !!editingId;
+      const form = new FormData();
 
-    form.append('title', formData.title.trim());
-    form.append('description', formData.description.trim());
-    form.append('category', formData.category);
-    form.append('type', formData.type);
+      form.append('title', formData.title.trim());
+      form.append('description', formData.description.trim());
+      form.append('category', formData.category);
+      form.append('type', formData.type);
 
-    // ✅ FIXED: Handle single File or multiple Files
-    if (formData.files) {
-      if (Array.isArray(formData.files)) {
+      // Append files (try both 'files' and 'files[]' to test server compatibility)
+      if (formData.files && formData.files.length > 0) {
         formData.files.forEach(file => {
           if (file instanceof File) {
-            form.append('files', file);
+            form.append('files', file); // Primary approach
+            form.append('files[]', file); // Alternative for servers expecting 'files[]'
+            console.log('Appending file:', file.name, 'Type:', file.type, 'Size:', file.size);
           }
         });
-      } else if (formData.files instanceof File) {
-        form.append('files', formData.files);
       }
-    }
 
-    // ✅ Append writers info as JSON
-    const writerMeta = formData.writers.map(writer => ({
-      name: writer.name,
-      role: writer.role
-    }));
-    form.append('writersInfo', JSON.stringify(writerMeta));
+      // Send writers as JSON string
+      const writerMeta = formData.writers.map(writer => ({
+        name: writer.name || '',
+        role: writer.role || '',
+        photoUrl: writer.photoFile ? '' : (writer.photoUrl || '').replace(API_BASE_URL, '').replace('/uploads', '/api/uploads'),
+      }));
+      form.append('writers', JSON.stringify(writerMeta));
 
-    // ✅ Append writer photo files
-    formData.writers.forEach((writer, index) => {
-      if (writer.photoFile instanceof File) {
-        form.append(`writers[${index}][photo]`, writer.photoFile);
+      formData.writers.forEach((writer, index) => {
+        if (writer.photoFile instanceof File) {
+          form.append(`writers[${index}][photo]`, writer.photoFile);
+          console.log('Appending writer photo:', writer.photoFile.name, 'Type:', writer.photoFile.type, 'Size:', writer.photoFile.size);
+        }
+      });
+
+      if (isEditMode && formData.fileUrls.length > 0) {
+        form.append('existingFileUrls', JSON.stringify(formData.fileUrls.map(url => url.replace(API_BASE_URL, '').replace('/uploads', '/api/uploads'))));
       }
-    });
 
-    // ✅ existing files in edit mode
-    if (isEditMode && formData.fileUrls.length > 0) {
-      form.append('existingFileUrls', formData.fileUrls.join(','));
-    }
-
-    // 🛰 Upload
-    const response = await fetch(
-      `${API_BASE_URL}/api/content${isEditMode ? `/${editingId}` : ''}?type=${formData.type}`,
-      {
-        method: isEditMode ? 'PUT' : 'POST',
-        body: form
+      // Log FormData entries for debugging
+      for (let [key, value] of form.entries()) {
+        console.log(`${key}: ${value instanceof File ? `${value.name} (${value.type}, ${value.size} bytes)` : value}`);
       }
-    );
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Upload failed');
+      const response = await Promise.race([
+        fetch(
+          `${API_BASE_URL}/api/content${isEditMode ? `/${editingId}` : ''}`,
+          {
+            method: isEditMode ? 'PUT' : 'POST',
+            body: form,
+            signal,
+          }
+        ),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Request timed out')), 60000)), // 60 seconds timeout
+      ]);
+
+      if (!response.ok) {
+        let errorMessage = 'Upload failed';
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          console.error('Full backend error:', JSON.stringify(errorData, null, 2));
+          errorMessage = errorData.error?.message || errorData.message || JSON.stringify(errorData.error) || 'Upload failed';
+        } else {
+          errorMessage = await response.text() || 'Upload failed';
+          console.error('Backend text error:', errorMessage);
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      showSuccess(isEditMode ? 'Content updated successfully' : 'Content uploaded successfully');
+      setShowModal(false);
+      resetForm();
+
+      const fetchContentResponse = await fetch(`${API_BASE_URL}/api/content`);
+      if (!fetchContentResponse.ok) throw new Error(`HTTP error! status: ${fetchContentResponse.status}`);
+      const data = await fetchContentResponse.json();
+      const contentData = data.data || data.content || (Array.isArray(data) ? data : []);
+      setContent(Array.isArray(contentData) ? contentData : []);
+
+    } catch (error) {
+      if (error.message === 'Request timed out') {
+        console.error('Fetch timed out');
+        setFileError('Request timed out. Please try again.');
+      } else if (error.name === 'AbortError') {
+        console.error('Request aborted');
+        setFileError('Upload cancelled.');
+      } else {
+        console.error('Upload error:', error.message);
+        setFileError(error.message || 'Upload failed. Please try again.');
+      }
+    } finally {
+      setIsUploading(false);
+      setIsLoading(false);
+      abortControllerRef.current = null;
     }
+  };
 
-    const result = await response.json();
-    showSuccess(isEditMode ? 'Content updated successfully' : 'Content uploaded successfully');
-    setShowModal(false);
-    resetForm();
-
-  } catch (error) {
-    console.error("Upload error:", error);
-    setFileError(error.message);
-  } finally {
+  const handleCancelUpload = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setShowUploadConfirmation(false);
+    setIsUploading(false);
     setIsLoading(false);
-  }
+    setFileError('Upload cancelled.');
+  };
 
-  console.log('📦 Main files:', formData.files);
-};
-
-
-  /**
-   * Filters content based on active tab
-   */
   const filteredContent = (() => {
     if (!Array.isArray(content)) return [];
-    
+
     return content.filter((item) => {
       if (!item || typeof item !== 'object') return false;
       if (activeTab === 'blogs') return item.type === 'blog';
@@ -628,11 +535,6 @@ const confirmUpload = async () => {
     });
   })();
 
-  /**
-   * Gets appropriate icon for content type
-   * @param {string} type - Content type
-   * @returns {JSX.Element} Icon component
-   */
   const getIconForType = (type) => {
     switch (type) {
       case 'blog': return <FaFileAlt />;
@@ -643,12 +545,22 @@ const confirmUpload = async () => {
     }
   };
 
-  /**
-   * Navigates back to admin dashboard
-   */
   const handleBackToDashboard = () => {
     navigate('/adminDashboard');
   };
+
+  const getMediaUrls = (item) => {
+    let urls = [];
+    if (Array.isArray(item.fileUrls) && item.fileUrls.length > 0) {
+      urls = item.fileUrls;
+    } else if (Array.isArray(item.files) && item.files.length > 0) {
+      urls = item.files.map(f => f.url).filter(Boolean);
+    } else if (item.url) {
+      urls = [item.url];
+    }
+    return urls.map(getFullUrl);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center p-4">
       {showSuccessMessage && (
@@ -718,8 +630,8 @@ const confirmUpload = async () => {
             >
               <div className="p-6 text-center">
                 <FiPlus className="mx-auto text-3xl text-gray-400 mb-2" />
-                <p className="text-gray-600">Add {activeTab === 'video' ? 'Video' : 
-                 activeTab === 'audio' ? 'Audio' : 
+                <p className="text-gray-600">Add {activeTab === 'video' ? 'Video' :
+                 activeTab === 'audio' ? 'Audio' :
                  activeTab === 'news' ? 'News' : 'Blog'}</p>
               </div>
             </motion.div>
@@ -733,86 +645,92 @@ const confirmUpload = async () => {
                 No content found. Add some content to get started.
               </div>
             ) : (
-              filteredContent.map((item) => (
-                <motion.div
-                  key={item._id}
-                  className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200"
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  <div className="relative">
-                    {item.url && (
-                      <div className="h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
-                        {item.type === 'video' ? (
-                          <video className="w-full h-full object-cover">
-                            <source src={`${API_BASE_URL}${item.url}`} type="video/mp4" />
-                          </video>
-                        ) : item.type === 'audio' ? (
-                          <div className="w-full p-4">
-                            <audio controls className="w-full">
-                              <source src={`${API_BASE_URL}${item.url}`} type="audio/mpeg" />
-                            </audio>
-                          </div>
-                        ) : (
-                          <div className="image-section p-2 bg-gray-50">
-                            {item.type === 'blog' || item.type === 'news' ? (
-                              <img
-                                src={`${API_BASE_URL}${item.url}`}
-                                alt={item.title}
-                                className="w-full h-40 object-cover rounded"
-                              />
-                            ) : null}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-4">
-                    <div className="flex items-center mb-2">
-                      <span className="text-blue-600 mr-2">
-                        {getIconForType(item.type)}
-                      </span>
-                      <h3 className="text-lg font-semibold text-gray-800 truncate">{item.title}</h3>
-                    </div>
-                    <p className="text-sm text-gray-600 line-clamp-2">{item.description}</p>
-                    {item.category && (
-                      <span className="inline-block mt-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
-                        {typeof item.category === 'object' ? item.category.name : item.category}
-                      </span>
-                    )}
-                    {item.writers && item.writers.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-xs text-gray-500 mb-1">Writers:</p>
-                        <div className="flex flex-wrap gap-1">
-                          {item.writers.map((writer, index) => (
-                            <span key={index} className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
-                              {writer.name}
-                            </span>
-                          ))}
+              filteredContent.map((item) => {
+                const mediaUrls = getMediaUrls(item);
+                return (
+                  <motion.div
+                    key={item._id || item.id}
+                    className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    <div className="relative">
+                      {mediaUrls.length > 0 && (
+                        <div className="h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
+                          {item.type === 'video' ? (
+                            <video className="w-full h-full object-cover" controls>
+                              <source src={mediaUrls[0]} type="video/mp4" />
+                            </video>
+                          ) : item.type === 'audio' ? (
+                            <div className="w-full p-4">
+                              <audio controls className="w-full">
+                                <source src={mediaUrls[0]} type="audio/mpeg" />
+                              </audio>
+                            </div>
+                          ) : (
+                            <div className="image-section p-2 bg-gray-50 flex overflow-x-auto gap-2">
+                              {mediaUrls.map((url, index) => (
+                                <img
+                                  key={index}
+                                  src={url}
+                                  alt={`${item.title} ${index + 1}`}
+                                  className="w-40 h-40 object-cover rounded"
+                                  onError={(e) => { e.target.src = '/fallback-image.jpg'; console.error('Image load error:', url); }}
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
 
-                  <div className="absolute top-2 right-2 flex space-x-2">
-                    <button
-                      onClick={() => handleEdit(item)}
-                      className="p-2 bg-white rounded-full shadow-md hover:bg-blue-50 text-blue-600"
-                      title="Edit"
-                    >
-                      <FiEdit2 size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item._id)}
-                      className="p-2 bg-white rounded-full shadow-md hover:bg-red-50 text-red-600"
-                      title="Delete"
-                    >
-                      <FiTrash2 size={16} />
-                    </button>
-                  </div>
-                </motion.div>
-              ))
+                    <div className="p-4">
+                      <div className="flex items-center mb-2">
+                        <span className="text-blue-600 mr-2">
+                          {getIconForType(item.type)}
+                        </span>
+                        <h3 className="text-lg font-semibold text-gray-800 truncate">{item.title}</h3>
+                      </div>
+                      <p className="text-sm text-gray-600 line-clamp-2">{item.description}</p>
+                      {item.category && (
+                        <span className="inline-block mt-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                          {typeof item.category === 'object' ? item.category.name : item.category}
+                        </span>
+                      )}
+                      {item.writers && item.writers.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-500 mb-1">Writers:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {item.writers.map((writer, index) => (
+                              <div key={index} className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full flex items-center gap-1">
+                                {writer.photoUrl && <img src={getFullUrl(writer.photoUrl)} alt={writer.name} className="w-4 h-4 rounded-full object-cover" onError={(e) => e.target.style.display = 'none'} />}
+                                {writer.name}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="absolute top-2 right-2 flex space-x-2">
+                      <button
+                        onClick={() => handleEdit(item)}
+                        className="p-2 bg-white rounded-full shadow-md hover:bg-blue-50 text-blue-600"
+                        title="Edit"
+                      >
+                        <FiEdit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item._id || item.id)}
+                        className="p-2 bg-white rounded-full shadow-md hover:bg-red-50 text-red-600"
+                        title="Delete"
+                      >
+                        <FiTrash2 size={16} />
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })
             )}
           </div>
         </motion.div>
@@ -846,6 +764,7 @@ const confirmUpload = async () => {
                   onChange={handleInputChange}
                   className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
+                  disabled={isUploading}
                 />
               </div>
               <div className="mb-4">
@@ -858,6 +777,7 @@ const confirmUpload = async () => {
                   className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   rows="3"
                   required
+                  disabled={isUploading}
                 />
               </div>
               <div className="mb-4">
@@ -868,6 +788,7 @@ const confirmUpload = async () => {
                   onChange={handleInputChange}
                   className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
+                  disabled={isUploading}
                 >
                   <option value="">Select a category</option>
                   {categories.map((cat) => (
@@ -884,6 +805,7 @@ const confirmUpload = async () => {
                   onChange={handleInputChange}
                   className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
+                  disabled={isUploading}
                 >
                   <option value="blog">Blog</option>
                   <option value="news">News</option>
@@ -893,64 +815,67 @@ const confirmUpload = async () => {
               </div>
 
               <div className="mb-4">
-                <label className="block text-gray-700 mb-1">Upload File</label>
+                <label className="block text-gray-700 mb-1">Upload File(s)</label>
                 <div className="flex items-center">
                   <label className="flex flex-col items-center px-4 py-2 bg-white rounded-lg border border-gray-300 cursor-pointer hover:bg-gray-50">
                     <FiUpload className="text-gray-600" />
                     <span className="mt-1 text-sm text-gray-600">
-                      {formData.files ? formData.files.name : 'Choose file'}
+                      {formData.files.length > 0 ? `${formData.files.length} file(s) selected` : 'Choose file(s)'}
                     </span>
                     <input
-                        type="file"
-                        name="files"
-                        onChange={handleInputChange}
-                        accept={
-                          formData.type === 'video'
-                            ? 'video/mp4,video/webm'
-                            : formData.type === 'audio'
-                            ? 'audio/mpeg,audio/mp3,audio/wav'
-                            : 'image/jpeg,image/png,image/webp,image/gif'
-                        }
-                        multiple={formData.type === 'blog' || formData.type === 'news'}
-                      />
-
+                      type="file"
+                      name="files"
+                      onChange={handleInputChange}
+                      accept={
+                        formData.type === 'video'
+                          ? 'video/mp4,video/webm'
+                          : formData.type === 'audio'
+                          ? 'audio/mpeg,audio/mp3,audio/wav'
+                          : 'image/jpeg,image/png,image/webp'
+                      }
+                      multiple={formData.type === 'blog' || formData.type === 'news'}
+                      className="hidden"
+                      disabled={isUploading}
+                    />
                   </label>
                 </div>
                 {fileError && (
                   <p className="text-red-500 text-sm mt-1">{fileError}</p>
                 )}
-                {formData.fileUrls && (
+                {formData.fileUrls.length > 0 && (
                   <div className="mt-2">
                     {formData.type === 'video' ? (
                       <video controls className="w-full mt-2 rounded" style={{ maxHeight: '150px' }}>
-                        <source src={formData.fileUrls} type="video/mp4" />
+                        <source src={formData.fileUrls[0]} type="video/mp4" />
                       </video>
                     ) : formData.type === 'audio' ? (
                       <audio controls className="w-full mt-2">
-                        <source src={formData.fileUrls} type="audio/mpeg" />
+                        <source src={formData.fileUrls[0]} type="audio/mpeg" />
                       </audio>
                     ) : (
-                      <div className="image-preview-section mt-4 p-2 border rounded bg-gray-50">
-                        <img
-                          src={formData.fileUrls}
-                          alt="Preview"
-                          className="w-full mt-2 rounded"
-                          style={{ maxHeight: '150px' }}
-                        />
+                      <div className="image-preview-section mt-4 p-2 border rounded bg-gray-50 flex overflow-x-auto gap-2">
+                        {formData.fileUrls.map((url, index) => (
+                          <img
+                            key={index}
+                            src={url}
+                            alt={`Preview ${index + 1}`}
+                            className="w-24 h-24 object-cover rounded"
+                            onError={(e) => { e.target.src = '/fallback-image.jpg'; console.error('Preview load error:', url); }}
+                          />
+                        ))}
                       </div>
                     )}
                   </div>
                 )}
                 <p className="text-xs text-gray-500 mt-1">
                   {formData.type === 'video'
-                    ? 'Allowed: MP4, WEBM (Max 10MB)'
+                    ? 'Allowed: MP4, WEBM (Max 100MB)'
                     : formData.type === 'audio'
-                    ? 'Allowed: MP3, WAV (Max 10MB)'
-                    : 'Allowed: JPG, PNG, GIF, WEBP (Max 10MB)'}
+                    ? 'Allowed: MP3, WAV (Max 100MB)'
+                    : 'Allowed: JPG, PNG, WEBP (Max 100MB, up to 5 images)'}
                 </p>
               </div>
 
-              {/* Writers Section */}
               <div className="mb-4">
                 <div className="flex justify-between items-center mb-2">
                   <label className="block text-gray-700">Writers</label>
@@ -959,12 +884,13 @@ const confirmUpload = async () => {
                       type="button"
                       onClick={addWriter}
                       className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+                      disabled={isUploading}
                     >
                       <FiPlus className="mr-1" /> Add Writer
                     </button>
                   )}
                 </div>
-                
+
                 {formData.writers.map((writer, index) => (
                   <div key={index} className="mb-4 p-3 border rounded-lg relative">
                     <button
@@ -972,32 +898,35 @@ const confirmUpload = async () => {
                       onClick={() => removeWriter(index)}
                       className="absolute top-1 right-1 text-gray-500 hover:text-red-500"
                       title="Remove writer"
+                      disabled={isUploading}
                     >
                       <FiX size={16} />
                     </button>
-                    
+
                     <div className="mb-2">
                       <label className="block text-sm text-gray-600 mb-1">Writer Name</label>
                       <input
                         type="text"
-                        value={writer.name}
+                        value={writer.name || ''}
                         onChange={(e) => handleWriterChange(index, 'name', e.target.value)}
                         className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                         placeholder="Writer name"
+                        disabled={isUploading}
                       />
                     </div>
-                    
+
                     <div className="mb-2">
                       <label className="block text-sm text-gray-600 mb-1">Role</label>
                       <input
                         type="text"
-                        value={writer.role}
+                        value={writer.role || ''}
                         onChange={(e) => handleWriterChange(index, 'role', e.target.value)}
                         className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                         placeholder="Writer role (optional)"
+                        disabled={isUploading}
                       />
                     </div>
-                    
+
                     <div className="mb-2">
                       <label className="block text-sm text-gray-600 mb-1">Photo</label>
                       <div className="flex items-center">
@@ -1006,11 +935,12 @@ const confirmUpload = async () => {
                           <span className="mt-1 text-gray-600">
                             {writer.photoFile ? writer.photoFile.name : 'Choose photo'}
                           </span>
-                          <input 
-                            type="file" 
+                          <input
+                            type="file"
                             onChange={(e) => handleWriterFileChange(index, e)}
                             className="hidden"
                             accept="image/jpeg,image/png,image/webp"
+                            disabled={isUploading}
                           />
                         </label>
                       </div>
@@ -1020,6 +950,7 @@ const confirmUpload = async () => {
                             src={writer.photoUrl}
                             alt="Writer preview"
                             className="w-16 h-16 object-cover rounded-full border"
+                            onError={(e) => { e.target.src = '/fallback-image.jpg'; console.error('Writer photo load error:', writer.photoUrl); }}
                           />
                         </div>
                       )}
@@ -1031,9 +962,9 @@ const confirmUpload = async () => {
               <button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md transition-colors mb-4"
-                disabled={isLoading}
+                disabled={isLoading || isUploading}
               >
-                {isLoading ? 'Processing...' : editingId ? 'Update Content' : 'Add Content'}
+                {isLoading || isUploading ? 'Processing...' : editingId ? 'Update Content' : 'Add Content'}
               </button>
             </form>
           </div>
@@ -1064,9 +995,9 @@ const confirmUpload = async () => {
               <button
                 onClick={confirmUpload}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                disabled={isLoading}
+                disabled={isUploading}
               >
-                {isLoading ? (
+                {isUploading ? (
                   <span className="flex items-center justify-center">
                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -1079,6 +1010,16 @@ const confirmUpload = async () => {
                 )}
               </button>
             </div>
+            {isUploading && (
+              <div className="flex justify-end mt-2">
+                <button
+                  onClick={handleCancelUpload}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                >
+                  Cancel Upload
+                </button>
+              </div>
+            )}
           </div>
         </motion.div>
       )}
