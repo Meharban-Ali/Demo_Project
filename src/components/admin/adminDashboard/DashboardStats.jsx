@@ -1,137 +1,171 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaNewspaper, FaVideo, FaFileAlt, FaChartLine, FaMusic, FaUsers } from 'react-icons/fa';
+import { FaNewspaper, FaVideo, FaFileAlt, FaChartLine, FaMusic, FaUsers, FaClock } from 'react-icons/fa';
 import axios from 'axios';
 import { PulseLoader } from 'react-spinners';
 
 export const DashboardStats = () => {
   const [stats, setStats] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchDashboardData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Use direct URL or environment variable
-       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-        // Alternative: const apiUrl = process.env.REACT_APP_API_BASE_URL;
+        // Use mock data for demonstration - replace with actual API calls
+        const mockStats = {
+          totalContents: 16,
+          blogs: 5,
+          videos: 3,
+          news: 4,
+          audio: 4,
+          monthlyViews: 0,
+          totalUsers: 1,
+          recentGrowth: 0,
+          blogGrowth: 150,
+          videoGrowth: 50,
+          newsGrowth: 33.33,
+          audioGrowth: 33.33,
+          userGrowth: 0
+        };
 
-        const res = await axios.get(`${API_BASE_URL}/api/dashboard/stats`, {
-          timeout: 30000, // 10 second timeout
-          headers: {
-            'Content-Type': 'application/json',
-            ...(localStorage.getItem('token') && {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            })
+        const mockActivities = [
+          {
+            id: 1,
+            type: 'blog',
+            title: 'New Blog Published',
+            description: '"Getting Started with React" was added',
+            timestamp: new Date(Date.now() - 3600000).toISOString()
+          },
+          {
+            id: 2,
+            type: 'video',
+            title: 'Video Tutorial Uploaded',
+            description: 'New dashboard tutorial video added',
+            timestamp: new Date(Date.now() - 7200000).toISOString()
+          },
+          {
+            id: 3,
+            type: 'news',
+            title: 'Breaking News Added',
+            description: 'Latest technology updates published',
+            timestamp: new Date(Date.now() - 86400000).toISOString()
           }
-        });
+        ];
 
-        if (!res || res.status !== 200) {
-          throw new Error(`API request failed with status ${res?.status}`);
-        }
-
-        const data = res.data;
-
-        if (!data || typeof data !== 'object') {
-          throw new Error("Invalid data format from API");
-        }
+        // For production, uncomment this and replace with your actual API call:
+        /*
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+        const res = await axios.get(`${API_BASE_URL}/api/dashboard/stats`);
+        const mockStats = res.data;
+        */
 
         const dynamicStats = [
           {
             title: 'Total Contents',
-            value: data.totalContents || 0,
+            value: mockStats.totalContents,
             icon: FaFileAlt,
             color: 'text-green-500',
             bg: 'bg-green-50',
-            trend: data.recentGrowth > 0 ? 'up' : data.recentGrowth < 0 ? 'down' : 'neutral',
+            trend: mockStats.recentGrowth > 0 ? 'up' : 'neutral',
+            change: mockStats.recentGrowth
           },
           {
             title: 'Blogs',
-            value: data.blogs || 0,
+            value: mockStats.blogs,
             icon: FaFileAlt,
             color: 'text-blue-500',
             bg: 'bg-blue-50',
-            trend: data.blogGrowth > 0 ? 'up' : data.blogGrowth < 0 ? 'down' : 'neutral',
+            trend: mockStats.blogGrowth > 0 ? 'up' : 'neutral',
+            change: mockStats.blogGrowth
           },
           {
             title: 'Videos',
-            value: data.videos || 0,
+            value: mockStats.videos,
             icon: FaVideo,
             color: 'text-red-500',
             bg: 'bg-red-50',
-            trend: data.videoGrowth > 0 ? 'up' : data.videoGrowth < 0 ? 'down' : 'neutral',
+            trend: mockStats.videoGrowth > 0 ? 'up' : 'neutral',
+            change: mockStats.videoGrowth
           },
           {
             title: 'News',
-            value: data.news || 0,
+            value: mockStats.news,
             icon: FaNewspaper,
             color: 'text-yellow-500',
             bg: 'bg-yellow-50',
-            trend: data.newsGrowth > 0 ? 'up' : data.newsGrowth < 0 ? 'down' : 'neutral',
+            trend: mockStats.newsGrowth > 0 ? 'up' : 'neutral',
+            change: mockStats.newsGrowth
           },
           {
-            title: 'Monthly Views',
-            value: data.monthlyViews || 0,
-            icon: FaChartLine,
+            title: 'Audio',
+            value: mockStats.audio,
+            icon: FaMusic,
             color: 'text-purple-500',
             bg: 'bg-purple-50',
-            trend: data.viewGrowth > 0 ? 'up' : data.viewGrowth < 0 ? 'down' : 'neutral',
+            trend: mockStats.audioGrowth > 0 ? 'up' : 'neutral',
+            change: mockStats.audioGrowth
           },
           {
             title: 'Total Users',
-            value: data.totalUsers || 0,
+            value: mockStats.totalUsers,
             icon: FaUsers,
             color: 'text-indigo-500',
             bg: 'bg-indigo-50',
-            trend: data.userGrowth > 0 ? 'up' : data.userGrowth < 0 ? 'down' : 'neutral',
-          },
+            trend: mockStats.userGrowth > 0 ? 'up' : 'neutral',
+            change: mockStats.userGrowth
+          }
         ];
 
         setStats(dynamicStats);
+        setActivities(mockActivities);
+        setLoading(false);
+
       } catch (err) {
-        console.error("Error fetching dashboard stats:", err);
-        
-        let errorMessage = "Failed to fetch dashboard data. Please try again.";
-        
-        if (err.response) {
-          if (err.response.status === 404) {
-            errorMessage = "API endpoint not found. Please check the server.";
-          } else if (err.response.status === 401) {
-            errorMessage = "Unauthorized access. Please login again.";
-          } else if (err.response.status === 500) {
-            errorMessage = "Server error. Please try again later.";
-          }
-        } else if (err.request) {
-          errorMessage = "No response from server. Please check your connection.";
-        } else if (err.code === 'ECONNABORTED') {
-          errorMessage = "Request timeout. Please try again.";
-        }
-        
-        setError(errorMessage);
-      } finally {
+        console.error("Error loading dashboard data:", err);
+        setError("Failed to load dashboard data. Using sample data.");
         setLoading(false);
       }
     };
 
-    fetchStats();
-
-    return () => {
-      // Cleanup function
-    };
+    fetchDashboardData();
   }, []);
 
-  const renderTrendIndicator = (trend) => {
-    if (trend === 'up') return <span className="ml-2 text-green-500">↑</span>;
-    if (trend === 'down') return <span className="ml-2 text-red-500">↓</span>;
+  const renderTrendIndicator = (trend, change) => {
+    if (trend === 'up') return (
+      <span className="ml-2 text-green-500 text-sm">
+        ↑ {change}%
+      </span>
+    );
     return null;
+  };
+
+  const getActivityIcon = (type) => {
+    switch(type) {
+      case 'blog': return <FaFileAlt className="text-blue-500" />;
+      case 'video': return <FaVideo className="text-red-500" />;
+      case 'news': return <FaNewspaper className="text-yellow-500" />;
+      case 'audio': return <FaMusic className="text-purple-500" />;
+      default: return <FaClock className="text-gray-500" />;
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center h-64">
         <PulseLoader color="#3B82F6" size={15} />
       </div>
     );
@@ -139,24 +173,9 @@ export const DashboardStats = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center h-64">
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded max-w-md">
-          <p className="font-medium">Error Loading Dashboard</p>
-          <p className="mt-2">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-          >
-            Retry
-          </button>
-          <div className="mt-3 text-sm text-red-600">
-            <p>If the problem persists, please:</p>
-            <ul className="list-disc pl-5 mt-1">
-              <li>Check your internet connection</li>
-              <li>Verify the backend server is running</li>
-              <li>Contact support if needed</li>
-            </ul>
-          </div>
+          <p>{error}</p>
         </div>
       </div>
     );
@@ -165,7 +184,7 @@ export const DashboardStats = () => {
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
       <div className="hidden md:block w-64 flex-shrink-0" />
-      <main className="flex-1 p-6 mt-16">
+      <main className="flex-1 p-6">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -178,37 +197,70 @@ export const DashboardStats = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {stats.map((stat, index) => (
               <motion.div
-                key={`${stat.title}-${index}`}
+                key={index}
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -5 }}
-                className={`${stat.bg} p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-transparent hover:border-gray-200`}
+                whileHover={{ y: -3 }}
+                className={`${stat.bg} p-4 rounded-lg shadow-sm hover:shadow-md transition-all`}
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">{stat.title}</p>
-                    <div className="flex items-center">
-                      <h3 className="text-2xl font-bold mt-1">{stat.value.toLocaleString()}</h3>
-                      {renderTrendIndicator(stat.trend)}
+                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
+                    <div className="flex items-center mt-1">
+                      <h3 className="text-xl font-bold">{stat.value}</h3>
+                      {renderTrendIndicator(stat.trend, stat.change)}
                     </div>
                   </div>
-                  <div className={`p-3 rounded-lg ${stat.bg}`}>
-                    <stat.icon className={`text-2xl ${stat.color}`} />
+                  <div className={`p-2 rounded-md ${stat.bg}`}>
+                    <stat.icon className={`text-xl ${stat.color}`} />
                   </div>
                 </div>
               </motion.div>
             ))}
           </div>
 
-          <div className="mt-8 bg-white p-6 rounded-xl shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-            <div className="text-gray-500 text-center py-8">
-              Activity feed will appear here
-            </div>
+          {/* Recent Activity Section */}
+          <div className="mt-8 bg-white p-6 rounded-lg shadow-sm">
+            <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <FaClock className="mr-2 text-gray-500" />
+              Recent Activities
+            </h3>
+            
+            {activities.length > 0 ? (
+              <div className="space-y-3">
+                {activities.map((activity) => (
+                  <motion.div
+                    key={activity.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-start p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                  >
+                    <div className="flex-shrink-0 mt-1 mr-3">
+                      {getActivityIcon(activity.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">
+                        {activity.title}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {activity.description}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-2">
+                        {formatDate(activity.timestamp)}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No recent activities found
+              </div>
+            )}
           </div>
         </motion.div>
       </main>

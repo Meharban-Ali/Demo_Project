@@ -1,740 +1,573 @@
-import React, { useState, useEffect } from 'react';
-import { FaNewspaper, FaDna, FaBriefcase, FaEarthAsia, FaLandmarkDome, FaTrophy, FaComputer, FaStarOfDavid, FaArrowUp, FaYoutube, FaInstagram, FaFacebook, FaShare } from 'react-icons/fa6';
-import { GiClapperboard } from 'react-icons/gi';
-import Slider from 'react-slick';
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import {
+  FiArrowLeft,
+  FiCalendar,
+  FiFileText,
+  FiVideo,
+  FiMusic,
+  FiImage,
+  FiLoader,
+  FiPlay,
+  FiPause,
+  FiHeart,
+  FiShare2,
+  FiDownload,
+  FiYoutube
+} from 'react-icons/fi';
+import { FaNewspaper } from 'react-icons/fa';
+import { motion } from 'framer-motion';
 
-export const HomeContent = () => {
-  const [showMore, setShowMore] = useState(false);
-  const [weatherData, setWeatherData] = useState(null);
-  const [loadingWeather, setLoadingWeather] = useState(true);
+export const ContentDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [content, setContent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [playingVideo, setPlayingVideo] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [imageLoadErrors, setImageLoadErrors] = useState({});
 
-  const toggleReadMore = () => {
-    setShowMore(!showMore);
+  const API_BASE_URL =
+    window._env_?.API_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    'http://localhost:5000';
+
+  // Default images for fallback
+  const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400&q=80';
+  const DEFAULT_WRITER_IMAGE = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200&q=80';
+
+  const getContentIcon = (type) => {
+    const iconStyle = "text-2xl mr-3 flex-shrink-0 drop-shadow-sm";
+    switch (type?.toLowerCase()) {
+      case 'blog': return <FiFileText className={`${iconStyle} text-indigo-500`} />;
+      case 'news': return <FaNewspaper className={`${iconStyle} text-rose-500`} />;
+      case 'video': return <FiVideo className={`${iconStyle} text-emerald-500`} />;
+      case 'audio': return <FiMusic className={`${iconStyle} text-violet-500`} />;
+      default: return <FiFileText className={`${iconStyle} text-slate-500`} />;
+    }
   };
 
-  // Fetch weather data
-  useEffect(() => {
-    const fetchWeather = async () => {
+  const getGradientClass = (type) => {
+    switch (type?.toLowerCase()) {
+      case 'blog': return 'from-indigo-500/15 to-purple-500/15';
+      case 'news': return 'from-rose-500/15 to-pink-500/15';
+      case 'video': return 'from-emerald-500/15 to-teal-500/15';
+      case 'audio': return 'from-violet-500/15 to-fuchsia-500/15';
+      default: return 'from-slate-500/15 to-gray-500/15';
+    }
+  };
+
+  const fetchContentDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await axios.get(`${API_BASE_URL}/api/content/${id}`);
+      const raw = response.data?.data || response.data;
+
+      if (!raw || typeof raw !== 'object') {
+        throw new Error('Invalid content data received');
+      }
+
+      // Get all media files
+      const mediaFiles = Array.isArray(raw.files) ? raw.files : [];
+      
+      // Get primary media
+      let primaryMedia = null;
+      if (mediaFiles.length > 0) {
+        primaryMedia = mediaFiles[0];
+      } else if (raw.url) {
+        primaryMedia = { url: raw.url, fileType: raw.type };
+      }
+
+      const contentData = {
+        id: raw._id || id,
+        title: raw.title?.trim() || 'Untitled Content',
+        description: raw.description?.trim() || 'No description available',
+        type: ['blog', 'news', 'video', 'audio', 'image'].includes(raw.type)
+          ? raw.type
+          : 'blog',
+        url: primaryMedia?.url || null,
+        fileType: primaryMedia?.fileType || raw.type,
+        createdAt: raw.createdAt ? new Date(raw.createdAt) : new Date(),
+        category: raw.category || null,
+        thumbnail: raw.thumbnail || null,
+        writers: Array.isArray(raw.writers) ? raw.writers : [],
+        files: mediaFiles,
+        likes: raw.likes || 0,
+        youtubeUrl: raw.youtubeUrl || null
+      };
+
+      setContent(contentData);
+    } catch (err) {
+      handleContentError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleContentError = (error) => {
+    let errorMsg = 'Content load failed. Please try again.';
+
+    if (error.response) {
+      if (error.response.status === 404) {
+        errorMsg = 'Requested content not found';
+      } else if (error.response.data?.message) {
+        errorMsg = error.response.data.message;
+      }
+    } else if (error.message.includes('Network Error')) {
+      errorMsg = 'Network connection error';
+    } else if (error.message.includes('Invalid content')) {
+      errorMsg = 'Invalid content data received';
+    }
+
+    console.error('Content Error:', error);
+    setError(errorMsg);
+  };
+
+  const getMediaUrl = (path) => {
+    if (!path || typeof path !== 'string') return null;
+
+    // If it's already a full URL, return as is
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+
+    // Handle different path formats
+    if (path.startsWith('/uploads/')) {
+      return `${API_BASE_URL}${path}`;
+    }
+    
+    if (path.startsWith('uploads/')) {
+      return `${API_BASE_URL}/${path}`;
+    }
+    
+    if (path.startsWith('/api/uploads/')) {
+      return `${API_BASE_URL}${path.replace('/api/uploads', '/uploads')}`;
+    }
+    
+    if (path.startsWith('api/uploads/')) {
+      return `${API_BASE_URL}/${path.replace('api/uploads/', 'uploads/')}`;
+    }
+
+    // Default case - assume it's relative to uploads
+    return `${API_BASE_URL}/uploads/${path}`;
+  };
+
+  const formatContentDate = (date) => {
+    if (!date || isNaN(new Date(date))) return 'Date not available';
+
+    return new Date(date).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleImageError = (event, type = 'content', id = 'main') => {
+    console.log(`Image error for ${type}-${id}`);
+    
+    // Set error state
+    setImageLoadErrors(prev => ({ ...prev, [`${type}-${id}`]: true }));
+    
+    // Set fallback image
+    if (event && event.target) {
+      if (type === 'writer') {
+        event.target.src = DEFAULT_WRITER_IMAGE;
+      } else {
+        event.target.src = DEFAULT_IMAGE;
+      }
+    }
+  };
+
+  const handleVideoPlay = () => {
+    setPlayingVideo(true);
+    const video = document.getElementById('content-video');
+    if (video) {
+      video.play().catch(e => console.log('Video play error:', e));
+    }
+  };
+
+  const handleVideoPause = () => {
+    setPlayingVideo(false);
+    const video = document.getElementById('content-video');
+    if (video) video.pause();
+  };
+
+  const handleLike = async () => {
+    try {
+      // Optimistic UI update
+      setLiked(!liked);
+      const newLikes = liked ? content.likes - 1 : content.likes + 1;
+      setContent({...content, likes: newLikes});
+      
+      // Send request to server
+      await axios.post(`${API_BASE_URL}/api/content/${id}/like`, {
+        liked: !liked
+      });
+    } catch (error) {
+      console.error('Error updating like:', error);
+      // Revert on error
+      setLiked(!liked);
+      setContent({...content, likes: content.likes});
+    }
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
       try {
-        // Note: In a real app, you would use an actual weather API with your API key
-        // This is a mock response for demonstration
-        const mockWeatherData = {
-          temp: 28,
-          condition: "Partly Cloudy",
-          humidity: 65,
-          wind: 12,
-          icon: "https://cdn.weatherapi.com/weather/64x64/day/116.png",
-          location: "New Delhi"
-        };
-        
-        setTimeout(() => {
-          setWeatherData(mockWeatherData);
-          setLoadingWeather(false);
-        }, 1000);
+        await navigator.share({
+          title: content.title,
+          text: content.description,
+          url: window.location.href,
+        });
       } catch (error) {
-        console.error("Error fetching weather:", error);
-        setLoadingWeather(false);
+        console.log('Sharing cancelled or failed', error);
       }
-    };
-
-    fetchWeather();
-  }, []);
-
-  // Slider settings
-  const sliderSettings = {
-    dots: true,
-    infinite: true,
-    speed: 500,
-    slidesToShow: 4,
-    slidesToScroll: 1,
-    responsive: [
-      {
-        breakpoint: 1024,
-        settings: {
-          slidesToShow: 3,
-          slidesToScroll: 1,
-        }
-      },
-      {
-        breakpoint: 768,
-        settings: {
-          slidesToShow: 2,
-          slidesToScroll: 1
-        }
-      },
-      {
-        breakpoint: 480,
-        settings: {
-          slidesToShow: 1,
-          slidesToScroll: 1
-        }
-      }
-    ]
+    } else {
+      // Fallback for browsers that don't support Web Share API
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        alert('Link copied to clipboard!');
+      }).catch(err => {
+        console.error('Could not copy text: ', err);
+      });
+    }
   };
 
-  const categorySliderSettings = {
-    ...sliderSettings,
-    slidesToShow: 3,
-    responsive: [
-      {
-        breakpoint: 1024,
-        settings: {
-          slidesToShow: 2,
-        }
-      },
-      {
-        breakpoint: 600,
-        settings: {
-          slidesToShow: 1,
-        }
-      }
-    ]
+  const handleDownload = () => {
+    if (content.url) {
+      const link = document.createElement('a');
+      link.href = getMediaUrl(content.url);
+      link.download = content.title || 'download';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
-  // Featured news data
-  const featuredNews = [
-    { 
-      id: 1, 
-      image: 'https://resize.indiatvnews.com/en/resize/gallery/840_-/2025/02/ec3-1738484216.jpg', 
-      category: 'चुनाव', 
-      date: 'जनवरी 01, 2025', 
-      title: '2025 के आम चुनाव: क्या बदल सकता है राजनीतिक परिदृश्य?' 
-    },
-    { 
-      id: 2, 
-      image: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-      category: 'एंटरटेनमेंट', 
-      date: 'जनवरी 01, 2025', 
-      title: 'बॉलीवुड की नई फिल्मों ने तोड़े सारे रिकॉर्ड' 
-    },
-    { 
-      id: 3, 
-      image: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-      category: 'देश', 
-      date: 'जनवरी 01, 2025', 
-      title: 'देश में कोरोना के नए मामलों में गिरावट' 
-    },
-    { 
-      id: 4, 
-      image: 'https://feeds.abplive.com/onecms/images/uploaded-images/2025/02/02/1e06b5bc8335c0d0ef4634df688887131738487537067344_original.jpg?impolicy=abp_cdn&imwidth=1200&height=675', 
-      category: 'स्पोर्ट्स', 
-      date: 'जनवरी 01, 2025', 
-      title: 'भारतीय क्रिकेट टीम ने जीता T20 वर्ल्ड कप' 
-    },
-    { 
-      id: 5, 
-      image: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-      category: 'बिज़नेस', 
-      date: 'जनवरी 01, 2025', 
-      title: 'स्टार्टअप को बढ़ावा देने के लिए नई योजना' 
-    },
-  ];
+  const handleYoutubeClick = () => {
+    if (content.youtubeUrl) {
+      window.open(content.youtubeUrl, '_blank');
+    }
+  };
 
-  // Category news data
-  const categoryNews = [
-    { 
-      title: 'लाइफस्टाइल', 
-      icon: <FaDna />,
-      items: [
-        { 
-          id: 1, 
-          image: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'लाइफस्टाइल', 
-          date: 'जनवरी 01, 2025', 
-          title: 'योग और मेडिटेशन से बेहतर जीवन' 
-        },
-        { 
-          id: 2, 
-          image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'लाइफस्टाइल', 
-          date: 'जनवरी 01, 2025', 
-          title: 'हेल्दी फूड हैबिट्स जो बदल देंगी आपकी लाइफ' 
-        },
-        { 
-          id: 3, 
-          image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'लाइफस्टाइल', 
-          date: 'जनवरी 01, 2025', 
-          title: 'ऑर्गेनिक फूड की बढ़ती लोकप्रियता' 
-        },
-      ]
-    },
-    { 
-      title: 'एंटरटेनमेंट', 
-      icon: <GiClapperboard />,
-      items: [
-        { 
-          id: 4, 
-          image: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'एंटरटेनमेंट', 
-          date: 'जनवरी 01, 2025', 
-          title: 'ओटीटी प्लेटफॉर्म्स पर रिलीज होंगी ये बेहतरीन फिल्में' 
-        },
-        { 
-          id: 5, 
-          image: 'https://feeds.abplive.com/onecms/images/uploaded-images/2024/08/04/770e4c9798088dc4c5760c1c883521f917227729571671064_original.PNG?impolicy=abp_cdn&imwidth=720', 
-          category: 'एंटरटेनमेंट', 
-          date: 'जनवरी 01, 2025', 
-          title: 'इस साल के सबसे ज्यादा कमाई करने वाले टीवी शो' 
-        },
-        { 
-          id: 6, 
-          image: 'https://images.unsplash.com/photo-1551818255-e6e10975bc17?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'एंटरटेनमेंट', 
-          date: 'जनवरी 01, 2025', 
-          title: 'बॉलीवुड सेलेब्स की लेटेस्ट न्यूज और गॉसिप' 
-        },
-      ]
-    },
-    { 
-      title: 'बिज़नेस', 
-      icon: <FaBriefcase />,
-      items: [
-        { 
-          id: 7, 
-          image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'बिज़नेस', 
-          date: 'जनवरी 01, 2025', 
-          title: 'शेयर बाजार में आज कैसे रहा माहौल?' 
-        },
-        { 
-          id: 8, 
-          image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'बिज़नेस', 
-          date: 'जनवरी 01, 2025', 
-          title: 'क्रिप्टोकरेंसी में निवेश के टिप्स' 
-        },
-        { 
-          id: 9, 
-          image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'बिज़नेस', 
-          date: 'जनवरी 01, 2025', 
-          title: 'फाइनेंशियल प्लानिंग: कैसे करें अपने पैसों का सही निवेश' 
-        },
-      ]
-    },
-    { 
-      title: 'देश', 
-      icon: <FaEarthAsia />,
-      items: [
-        { 
-          id: 10, 
-          image: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'देश', 
-          date: 'जनवरी 01, 2025', 
-          title: 'देशभर में मनाया गया गणतंत्र दिवस' 
-        },
-        { 
-          id: 11, 
-          image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'देश', 
-          date: 'जनवरी 01, 2025', 
-          title: 'नई शिक्षा नीति पर चर्चा' 
-        },
-        { 
-          id: 12, 
-          image: 'https://images.unsplash.com/photo-1527689368864-3a821dbccc34?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'देश', 
-          date: 'जनवरी 01, 2025', 
-          title: 'सरकार की नई योजनाएं जो बदल सकती हैं आपकी जिंदगी' 
-        },
-      ]
-    },
-  ];
-
-  // Politics news data
-  const politicsNews = [
-    { 
-      id: 1, 
-      image: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-      category: 'राजनीति', 
-      date: 'जनवरी 01, 2025', 
-      title: 'केंद्र सरकार ने पेश किया नया बजट', 
-      description: 'वित्त मंत्री ने आज संसद में नया बजट पेश किया जिसमें मध्यम वर्ग के लिए कई राहत भरे प्रावधान किए गए हैं...' 
-    },
-    { 
-      id: 2, 
-      image: 'https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-      category: 'राजनीति', 
-      date: 'जनवरी 01, 2025', 
-      title: 'विपक्ष ने उठाए सरकार के खिलाफ सवाल' 
-    },
-    { 
-      id: 3, 
-      image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-      category: 'राजनीति', 
-      date: 'जनवरी 01, 2025', 
-      title: 'राज्यसभा में हुई महत्वपूर्ण बहस' 
-    },
-    { 
-      id: 4, 
-      image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-      category: 'राजनीति', 
-      date: 'जनवरी 01, 2025', 
-      title: 'चुनाव आयोग ने जारी की नई गाइडलाइंस', 
-      description: 'आगामी चुनावों को लेकर चुनाव आयोग ने नई गाइडलाइंस जारी की हैं जिसमें सोशल मीडिया के इस्तेमाल पर विशेष ध्यान दिया गया है...' 
-    },
-    { 
-      id: 5, 
-      image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-      category: 'राजनीति', 
-      date: 'जनवरी 01, 2025', 
-      title: 'मुख्यमंत्री ने शुरू की नई योजना' 
-    },
-    { 
-      id: 6, 
-      image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-      category: 'राजनीति', 
-      date: 'जनवरी 01, 2025', 
-      title: 'राजनीतिक दलों की बैठक आज' 
-    },
-  ];
-
-  // Sports and Tech news data
-  const sportsTechNews = [
-    { 
-      title: 'खेल', 
-      icon: <FaTrophy />,
-      items: [
-        { 
-          id: 1, 
-          image: 'https://images.unsplash.com/photo-1543357486-c2505d2bea59?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'खेल', 
-          date: 'जनवरी 01, 2025', 
-          title: 'भारतीय क्रिकेट टीम ने जीता T20 वर्ल्ड कप', 
-          description: 'भारतीय क्रिकेट टीम ने फाइनल में इंग्लैंड को हराकर T20 वर्ल्ड कप जीत लिया है। यह भारत का तीसरा T20 वर्ल्ड कप खिताब है...' 
-        },
-        { 
-          id: 2, 
-          image: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'खेल', 
-          date: 'जनवरी 01, 2025', 
-          title: 'ओलंपिक के लिए भारतीय टीम का चयन' 
-        },
-        { 
-          id: 3, 
-          image: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'खेल', 
-          date: 'जनवरी 01, 2025', 
-          title: 'फुटबॉल लीग में भारतीय खिलाड़ी का शानदार प्रदर्शन' 
-        },
-      ]
-    },
-    { 
-      title: 'टेक्नोलॉजी', 
-      icon: <FaComputer />,
-      items: [
-        { 
-          id: 4, 
-          image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'टेक्नोलॉजी', 
-          date: 'जनवरी 01, 2025', 
-          title: 'एप्पल ने लॉन्च किया नया आईफोन', 
-          description: 'एप्पल ने अपना नया आईफोन 15 सीरीज लॉन्च कर दिया है जिसमें कई नए फीचर्स जोड़े गए हैं...' 
-        },
-        { 
-          id: 5, 
-          image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'टेक्नोलॉजी', 
-          date: 'जनवरी 01, 2025', 
-          title: '5G टेक्नोलॉजी भारत में लॉन्च' 
-        },
-        { 
-          id: 6, 
-          image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', 
-          category: 'टेक्नोलॉजी', 
-          date: 'जनवरी 01, 2025', 
-          title: 'भारतीय स्टार्टअप ने बनाया यूनिक टेक्नोलॉजी प्रोडक्ट' 
-        },
-      ]
-    },
-  ];
-
-  // Load external scripts for widgets
   useEffect(() => {
-    // Cricket widget script
-    const loadCricketWidget = () => {
-      const scoreFrame = document.getElementById('score-frame');
-      if (scoreFrame) {
-        scoreFrame.innerHTML = '<iframe src="https://cwidget.crictimes.org/?v=1.1&a=2196f3&c=2196f3&bo=2196f3&b=ffffff&sb=ffffff&lb=ff0000&lc=ffffff&db=2196f3&dc=ffffff&tc=2196f3&ti=ffffff" style="width:100%;min-height:460px;border:none;"></iframe>';
-      }
-    };
+    fetchContentDetails();
+  }, [id]);
 
-    loadCricketWidget();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <FiLoader className="animate-spin text-blue-500 text-4xl mb-4 mx-auto" />
+          <p className="text-gray-600 text-xl">Loading content details...</p>
+        </div>
+      </div>
+    );
+  }
 
-    return () => {
-      // Cleanup if needed
-    };
-  }, []);
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-red-50 flex items-center justify-center">
+        <div className="text-center p-8 bg-white rounded-2xl shadow-xl border border-rose-200 max-w-md">
+          <div className="text-rose-500 text-5xl mb-4">⚠️</div>
+          <p className="text-xl font-semibold text-rose-700 mb-2">Oops! Something went wrong</p>
+          <p className="text-rose-600 mb-6">{error}</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!content) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-orange-50 flex items-center justify-center">
+        <div className="text-center p-8 bg-white rounded-2xl shadow-xl border border-amber-200">
+          <div className="text-amber-500 text-5xl mb-4">📭</div>
+          <p className="text-2xl font-bold text-amber-700 mb-2">No Content Found</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
+            Back to Content
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="font-sans bg-gray-50 ml-8">
-      {/* Featured News Slider */}
-      <div className="container-fluid py-3 bg-white shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg">
-        <div className="container">
-          <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-800 py-2 px-4 mb-3 rounded-lg shadow-sm">
-            <h3 className="m-0 text-lg font-semibold flex items-center text-white">
-              <FaNewspaper className="mr-2" /> न्यूज़
-            </h3>
-            <div className="flex items-center space-x-4">
-              <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                <FaYoutube className="text-xl" />
-              </a>
-              <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                <FaInstagram className="text-xl" />
-              </a>
-              <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                <FaFacebook className="text-xl" />
-              </a>
-              <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                <FaShare className="text-xl" />
-              </a>
-            </div>
-          </div>
-          <Slider {...sliderSettings}>
-            {featuredNews.map((news) => (
-              <div key={news.id} className="px-2">
-                <div className="relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300" style={{ height: '300px' }}>
-                  <img 
-                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" 
-                    src={news.image} 
-                    alt={news.title}
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-fuchsia-50 to-pink-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 md:px-6">
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          onClick={() => navigate(-1)}
+          className="flex items-center text-blue-600 hover:text-blue-800 mb-8 transition-colors bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm"
+        >
+          <FiArrowLeft className="mr-2" />
+          Back to Content
+        </motion.button>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className={`bg-gradient-to-br ${getGradientClass(content.type)} backdrop-blur-sm bg-white/90 rounded-3xl shadow-lg overflow-hidden border border-white/60`}
+        >
+          {/* Media Display */}
+          <div className="w-full">
+            {content.fileType === 'video' ? (
+              <div className="relative bg-gradient-to-br from-gray-900 to-black overflow-hidden group">
+                <div className="w-full h-96 relative">
+                  <video
+                    id="content-video"
+                    controls
+                    className="absolute inset-0 w-full h-full object-contain"
+                    src={getMediaUrl(content.url)}
+                    poster={content.thumbnail ? getMediaUrl(content.thumbnail) : undefined}
+                    playsInline
                   />
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4 text-white">
-                    <div className="mb-1 text-sm">
-                      <a className="text-white hover:text-orange-300 transition-colors" href="#">{news.category}</a>
-                      <span className="px-1">/</span>
-                      <a className="text-white hover:text-orange-300 transition-colors" href="#">{news.date}</a>
+                  
+                  {/* Custom Video Controls Overlay */}
+                  {!playingVideo && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-all duration-300">
+                      <motion.button
+                        className="bg-white/95 backdrop-blur-sm text-emerald-600 p-5 rounded-full shadow-2xl hover:bg-white transition-all"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleVideoPlay}
+                      >
+                        <FiPlay className="w-8 h-8 ml-1" />
+                      </motion.button>
                     </div>
-                    <a className="text-lg font-semibold hover:text-orange-300 transition-colors" href="#">{news.title}</a>
-                  </div>
+                  )}
+                </div>
+                
+                {/* Video Badge */}
+                <div className="absolute top-4 right-4 bg-emerald-500 text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg">
+                  VIDEO
                 </div>
               </div>
-            ))}
-          </Slider>
-        </div>
-      </div>
-
-      {/* Category News Slider */}
-      <div className="container-fluid bg-white shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg mt-6">
-        <div className="container">
-          {categoryNews.map((category, index) => (
-            <div key={index} className="py-3">
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-600 to-blue-800 py-2 px-4 mb-3 flex justify-between items-center">
-                  <h3 className="m-0 text-lg font-semibold flex items-center text-white">
-                    <span className="mr-2">{category.icon}</span>
-                    <a href="#" className="hover:text-orange-300 transition-colors">{category.title}</a>
-                  </h3>
-                  <div className="flex items-center space-x-3">
-                    <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                      <FaYoutube className="text-lg" />
-                    </a>
-                    <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                      <FaInstagram className="text-lg" />
-                    </a>
-                    <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                      <FaFacebook className="text-lg" />
-                    </a>
-                    <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                      <FaShare className="text-lg" />
-                    </a>
+            ) : content.fileType === 'audio' ? (
+              <div className="p-6 bg-gradient-to-br from-violet-400 to-fuchsia-500">
+                <div className="w-full h-64 relative flex items-center justify-center">
+                  <img
+                    src={content.thumbnail ? getMediaUrl(content.thumbnail) : 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400&q=80'}
+                    alt={content.title}
+                    className="absolute inset-0 w-full h-full object-cover opacity-30"
+                    onError={(e) => handleImageError(e, 'thumbnail', 'thumbnail')}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-500/60 to-fuchsia-500/60 flex items-center justify-center">
+                    <motion.div 
+                      className="bg-white/95 p-6 rounded-full shadow-2xl"
+                      whileHover={{ scale: 1.05, rotate: 5 }}
+                    >
+                      <FiMusic className="text-4xl text-violet-600" />
+                    </motion.div>
                   </div>
+                  <audio
+                    controls
+                    className="absolute bottom-4 left-4 right-4"
+                    src={getMediaUrl(content.url)}
+                    autoPlay
+                  />
                 </div>
-                <Slider {...categorySliderSettings}>
-                  {category.items.map((item) => (
-                    <div key={item.id} className="px-2">
-                      <div className="relative bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
-                        <img 
-                          className="w-full h-48 object-cover transition-transform duration-500 hover:scale-105" 
-                          src={item.image} 
-                          alt={item.title}
-                        />
-                        <div className="p-3 bg-white">
-                          <div className="mb-2 text-xs text-gray-600">
-                            <a href="#" className="hover:text-blue-600 transition-colors">{item.category}</a>
-                            <span className="px-1">/</span>
-                            <span>{item.date}</span>
-                          </div>
-                          <a className="text-md font-semibold hover:text-blue-600 transition-colors" href="#">{item.title}</a>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </Slider>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* News With Sidebar */}
-      <div className="container-fluid py-3 bg-white shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg mt-6">
-        <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Main Content */}
-            <div className="lg:col-span-3">
-              {/* Politics News */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300 mb-6">
-                <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-800 py-2 px-4 mb-3 rounded-t-lg">
-                  <h3 className="m-0 text-lg font-semibold flex items-center text-white">
-                    <FaLandmarkDome className="mr-2" /> राजनीति
-                  </h3>
-                  <div className="flex items-center space-x-4">
-                    <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                      <FaYoutube className="text-lg" />
-                    </a>
-                    <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                      <FaInstagram className="text-lg" />
-                    </a>
-                    <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                      <FaFacebook className="text-lg" />
-                    </a>
-                    <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                      <FaShare className="text-lg" />
-                    </a>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-                  {politicsNews.slice(0, 2).map((news) => (
-                    <div key={news.id} className="relative bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
-                      <img 
-                        className="w-full h-64 object-cover transition-transform duration-500 hover:scale-105" 
-                        src={news.image} 
-                        alt={news.title}
-                      />
-                      <div className="mt-2 p-3">
-                        <div className="mb-2 text-sm text-gray-600">
-                          <a href="#" className="hover:text-blue-600 transition-colors">{news.category}</a>
-                          <span className="px-1">/</span>
-                          <span>{news.date}</span>
-                        </div>
-                        <a className="text-lg font-semibold hover:text-blue-600 transition-colors" href="#">{news.title}</a>
-                        <p className="mt-1 text-gray-700">{news.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-                  {politicsNews.slice(2, 6).map((news) => (
-                    <div key={news.id} className="flex bg-gray-50 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
-                      <img 
-                        className="w-24 h-24 object-cover" 
-                        src={news.image} 
-                        alt={news.title}
-                      />
-                      <div className="w-full flex flex-col justify-center px-3">
-                        <div className="mb-1 text-xs text-gray-600">
-                          <a href="#" className="hover:text-blue-600 transition-colors">{news.category}</a>
-                          <span className="px-1">/</span>
-                          <span>{news.date}</span>
-                        </div>
-                        <a className="text-sm font-semibold hover:text-blue-600 transition-colors" href="#">{news.title}</a>
-                      </div>
-                    </div>
-                  ))}
+                
+                {/* Audio Badge */}
+                <div className="absolute top-4 right-4 bg-violet-500 text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg">
+                  AUDIO
                 </div>
               </div>
-
-              {/* Advertisement */}
-              <div className="mb-6 bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-                <a href="#">
-                  <img className="w-full rounded" src="https://via.placeholder.com/700x100" alt="Advertisement" />
-                </a>
-              </div>
-
-              {/* Sports and Technology News */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                {sportsTechNews.map((section, index) => (
-                  <div key={index} className="bg-white rounded-lg border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300">
-                    <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-800 py-2 px-4 mb-3 rounded-t-lg">
-                      <h3 className="m-0 text-lg font-semibold flex items-center text-white">
-                        <span className="mr-2">{section.icon}</span>
-                        {section.title}
-                      </h3>
-                      <div className="flex items-center space-x-4">
-                        <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                          <FaYoutube className="text-lg" />
-                        </a>
-                        <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                          <FaInstagram className="text-lg" />
-                        </a>
-                        <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                          <FaFacebook className="text-lg" />
-                        </a>
-                        <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                          <FaShare className="text-lg" />
-                        </a>
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      {section.items.slice(0, 1).map((item) => (
-                        <div key={item.id} className="mb-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
-                          <img 
-                            className="w-full h-48 object-cover transition-transform duration-500 hover:scale-105" 
-                            src={item.image} 
-                            alt={item.title}
-                          />
-                          <div className="mt-2 p-3">
-                            <div className="mb-2 text-sm text-gray-600">
-                              <a href="#" className="hover:text-blue-600 transition-colors">{item.category}</a>
-                              <span className="px-1">/</span>
-                              <span>{item.date}</span>
-                            </div>
-                            <a className="text-lg font-semibold hover:text-blue-600 transition-colors" href="#">{item.title}</a>
-                            <p className="mt-1 text-gray-700">{item.description}</p>
-                          </div>
-                        </div>
-                      ))}
-                      {section.items.slice(1, 3).map((item) => (
-                        <div key={item.id} className="flex mb-3 bg-gray-50 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
-                          <img 
-                            className="w-20 h-20 object-cover" 
-                            src={item.image} 
-                            alt={item.title}
-                          />
-                          <div className="w-full flex flex-col justify-center px-3">
-                            <div className="mb-1 text-xs text-gray-600">
-                              <a href="#" className="hover:text-blue-600 transition-colors">{item.category}</a>
-                              <span className="px-1">/</span>
-                              <span>{item.date}</span>
-                            </div>
-                            <a className="text-sm font-semibold hover:text-blue-600 transition-colors" href="#">{item.title}</a>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Large Advertisement */}
-              <div className="mb-6 bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-                <a href="#">
-                  <img className="w-full rounded" src="https://via.placeholder.com/700x150" alt="Advertisement" />
-                </a>
-              </div>
-            </div>
-
-            {/* Sidebar */}
-            <div className="lg:col-span-1">
-              {/* Weather Widget */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300 mb-6 p-4">
-                <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-800 py-2 px-4 mb-3 rounded-t-lg">
-                  <h3 className="m-0 text-lg font-semibold flex items-center text-white">
-                    <FaStarOfDavid className="mr-2" /> मौसम
-                  </h3>
-                  <div className="flex items-center space-x-2">
-                    <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                      <FaShare className="text-lg" />
-                    </a>
-                  </div>
-                </div>
-                {loadingWeather ? (
-                  <div className="text-center py-4">
-                    <div className="animate-pulse flex flex-col items-center">
-                      <div className="h-24 w-24 bg-gray-200 rounded-full mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                    </div>
-                  </div>
-                ) : weatherData ? (
-                  <div className="text-center">
-                    <div className="flex justify-center mb-2">
-                      <img src={weatherData.icon} alt="Weather icon" className="w-16 h-16" />
-                    </div>
-                    <h4 className="text-2xl font-bold mb-1">{weatherData.temp}°C</h4>
-                    <p className="text-gray-700 mb-2">{weatherData.condition}</p>
-                    <p className="text-sm text-gray-600">{weatherData.location}</p>
-                    <div className="grid grid-cols-2 gap-2 mt-4 text-sm">
-                      <div className="bg-gray-50 p-2 rounded">
-                        <span className="block text-gray-500">Humidity</span>
-                        <span className="font-medium">{weatherData.humidity}%</span>
-                      </div>
-                      <div className="bg-gray-50 p-2 rounded">
-                        <span className="block text-gray-500">Wind</span>
-                        <span className="font-medium">{weatherData.wind} km/h</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-4 text-gray-500">
-                    Weather data unavailable
-                  </div>
-                )}
-              </div>
-
-              {/* Newsletter */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300 mb-6 p-4">
-                <div className="text-center mb-3">
-                  <h3 className="text-lg font-semibold text-blue-700">Newsletter</h3>
-                </div>
-                <div className="text-center">
-                  <span className="block mb-3 text-gray-600">Join 50,000 subscribers</span>
-                  <form>
-                    <div className="mb-2">
-                      <input 
-                        type="email" 
-                        className="w-full p-2 border border-gray-300 rounded-lg text-center shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                        placeholder="Email address..." 
-                      />
-                    </div>
-                    <button className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white py-2 rounded-lg hover:from-blue-700 hover:to-blue-900 transition-all shadow-md">
-                      Sign Up
-                    </button>
-                  </form>
-                  <div className="flex justify-center space-x-4 mt-3">
-                    <a href="#" className="text-blue-600 hover:text-blue-800 transition-colors">
-                      <FaYoutube className="text-xl" />
-                    </a>
-                    <a href="#" className="text-blue-600 hover:text-blue-800 transition-colors">
-                      <FaInstagram className="text-xl" />
-                    </a>
-                    <a href="#" className="text-blue-600 hover:text-blue-800 transition-colors">
-                      <FaFacebook className="text-xl" />
-                    </a>
-                  </div>
-                  <span className="block mt-3 text-xs text-gray-500">
-                    By signing up, you agree to our <a href="#" className="text-blue-600 hover:text-blue-800">Privacy policy</a>
-                  </span>
+            ) : content.url || content.thumbnail ? (
+              <div className="flex justify-center bg-gradient-to-br from-gray-100 to-gray-200 p-4 max-h-[70vh] min-h-[400px]">
+                <img
+                  src={getMediaUrl(content.url || content.thumbnail)}
+                  alt={content.title}
+                  className="max-w-full max-h-full object-contain"
+                  onError={(e) => handleImageError(e, 'content', 'main')}
+                  loading="lazy"
+                />
+                
+                {/* Content Type Badge */}
+                <div className={`absolute top-4 right-4 ${
+                  content.type === 'blog' ? 'bg-indigo-500' : 
+                  content.type === 'news' ? 'bg-rose-500' : 'bg-slate-500'
+                } text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg uppercase`}>
+                  {content.type || 'CONTENT'}
                 </div>
               </div>
-
-              {/* Advertisement */}
-              <div className="mb-6 bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-                <a href="#">
-                  <img className="w-full rounded" src="https://via.placeholder.com/300x250" alt="Advertisement" />
-                </a>
-              </div>
-
-              {/* Cricket Score */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300 p-4">
-                <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-800 py-2 px-4 mb-3 rounded-t-lg">
-                  <h3 className="m-0 text-lg font-semibold flex items-center text-white">
-                    <FaTrophy className="mr-2" /> क्रिकेट स्कोर
-                  </h3>
-                  <div className="flex items-center space-x-2">
-                    <a href="#" className="text-white hover:text-orange-300 transition-colors">
-                      <FaShare className="text-lg" />
-                    </a>
-                  </div>
+            ) : (
+              <div className="flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 p-8 min-h-[400px]">
+                <div className="text-center text-gray-500">
+                  <FiImage className="w-16 h-16 mx-auto mb-4" />
+                  <p className="text-lg">No media available</p>
                 </div>
-                <div id="score-frame" style={{ minHeight: '460px' }}>
-                  Loading cricket scores...
+                
+                {/* Content Type Badge */}
+                <div className={`absolute top-4 right-4 ${
+                  content.type === 'blog' ? 'bg-indigo-500' : 
+                  content.type === 'news' ? 'bg-rose-500' : 'bg-slate-500'
+                } text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg uppercase`}>
+                  {content.type || 'CONTENT'}
                 </div>
               </div>
-            </div>
+            )}
           </div>
-        </div>
-      </div>
 
-      {/* Scroll to Top */}
-      <div className="fixed bottom-6 right-6">
-        <a href="#" className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-3 rounded-full shadow-lg hover:from-blue-700 hover:to-blue-900 transition-all hover:shadow-xl flex items-center justify-center">
-          <FaArrowUp className="h-5 w-5" />
-        </a>
+          {/* Content Details */}
+          <div className="p-6 md:p-8">
+            <div className="flex items-start mb-6">
+              {getContentIcon(content.type)}
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
+                  {content.title}
+                </h1>
+                
+                <div className="flex flex-wrap items-center text-gray-500 gap-4 mb-4">
+                  <div className="flex items-center bg-gray-100 px-3 py-1 rounded-full">
+                    <FiCalendar className="mr-2" />
+                    <span>{formatContentDate(content.createdAt)}</span>
+                  </div>
+
+                  {content.category && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-200 text-gray-800">
+                      {typeof content.category === 'object'
+                        ? content.category.name
+                        : content.category}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-3 mb-6">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleLike}
+                className={`flex items-center px-4 py-2 rounded-full ${liked ? 'bg-red-500 text-white' : 'bg-white text-gray-700'} shadow-sm border border-gray-200 transition-colors`}
+              >
+                <FiHeart className={`mr-2 ${liked ? 'fill-current' : ''}`} />
+                <span>{content.likes || 0}</span>
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleShare}
+                className="flex items-center px-4 py-2 rounded-full bg-white text-gray-700 shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                <FiShare2 className="mr-2" />
+                Share
+              </motion.button>
+
+              {content.url && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleDownload}
+                  className="flex items-center px-4 py-2 rounded-full bg-white text-gray-700 shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  <FiDownload className="mr-2" />
+                  Download
+                </motion.button>
+              )}
+
+              {content.youtubeUrl && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleYoutubeClick}
+                  className="flex items-center px-4 py-2 rounded-full bg-red-600 text-white shadow-sm border border-red-700 hover:bg-red-700 transition-colors"
+                >
+                  <FiYoutube className="mr-2" />
+                  YouTube
+                </motion.button>
+              )}
+            </div>
+
+            {/* Writers Section */}
+            {content.writers && content.writers.length > 0 && (
+              <div className="mb-6 p-4 bg-white/50 rounded-xl border border-white/70">
+                <p className="text-sm font-medium text-gray-500 mb-3">लेखक / Writers:</p>
+                <div className="flex flex-wrap gap-3">
+                  {content.writers.map((writer, index) => (
+                    <div key={index} className="flex items-center bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100">
+                      {writer.photoUrl ? (
+                        <img
+                          src={getMediaUrl(writer.photoUrl)}
+                          alt={writer.name}
+                          className="w-10 h-10 rounded-full object-cover mr-3 border border-gray-300"
+                          onError={(e) => handleImageError(e, 'writer', `writer-${index}`)}
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gray-300 mr-3 flex items-center justify-center text-gray-600 text-sm font-medium">
+                          {writer.name ? writer.name.charAt(0).toUpperCase() : 'W'}
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {writer.name || 'अज्ञात लेखक / Unknown Writer'}
+                        </p>
+                        {writer.role && (
+                          <p className="text-xs text-gray-500">{writer.role}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Description */}
+            <div className="prose max-w-none mb-6">
+              <div className="text-gray-700 whitespace-pre-line leading-relaxed text-lg">
+                {content.description}
+              </div>
+            </div>
+
+            {/* Additional Media Files */}
+            {content.files && content.files.length > 1 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Additional Media</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {content.files.slice(1).map((file, index) => (
+                    <div key={index} className="rounded-lg overflow-hidden border border-gray-200">
+                      {file.fileType === 'image' ? (
+                        <img
+                          src={getMediaUrl(file.url)}
+                          alt={`Additional media ${index + 1}`}
+                          className="w-full h-32 object-cover"
+                          onError={(e) => handleImageError(e, 'file', `file-${index}`)}
+                        />
+                      ) : file.fileType === 'video' ? (
+                        <div className="relative h-32 bg-black flex items-center justify-center">
+                          <FiVideo className="text-white text-2xl" />
+                        </div>
+                      ) : (
+                        <div className="h-32 bg-gray-100 flex items-center justify-center">
+                          <FiFileText className="text-gray-500 text-2xl" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
       </div>
     </div>
   );

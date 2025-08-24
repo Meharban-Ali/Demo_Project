@@ -8,9 +8,16 @@ import {
   FiVideo,
   FiMusic,
   FiImage,
-  FiLoader
+  FiLoader,
+  FiPlay,
+  FiPause,
+  FiHeart,
+  FiShare2,
+  FiDownload,
+  FiYoutube
 } from 'react-icons/fi';
 import { FaNewspaper } from 'react-icons/fa';
+import { motion } from 'framer-motion';
 
 export const ContentDetail = () => {
   const { id } = useParams();
@@ -18,6 +25,9 @@ export const ContentDetail = () => {
   const [content, setContent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [playingVideo, setPlayingVideo] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [imageErrors, setImageErrors] = useState(new Set());
 
   const API_BASE_URL =
     window._env_?.API_URL ||
@@ -25,15 +35,24 @@ export const ContentDetail = () => {
     'http://localhost:5000';
 
   const getContentIcon = (type) => {
-    const iconStyle = "mr-2 flex-shrink-0";
-    const icons = {
-      blog: <FiFileText className={iconStyle} style={{ color: '#3B82F6' }} />,
-      news: <FaNewspaper className={iconStyle} style={{ color: '#EF4444' }} />,
-      video: <FiVideo className={iconStyle} style={{ color: '#10B981' }} />,
-      audio: <FiMusic className={iconStyle} style={{ color: '#8B5CF6' }} />,
-      image: <FiImage className={iconStyle} style={{ color: '#F59E0B' }} />
-    };
-    return icons[type] || <FiFileText className={iconStyle} />;
+    const iconStyle = "text-2xl mr-3 flex-shrink-0 drop-shadow-sm";
+    switch (type?.toLowerCase()) {
+      case 'blog': return <FiFileText className={`${iconStyle} text-indigo-500`} />;
+      case 'news': return <FaNewspaper className={`${iconStyle} text-rose-500`} />;
+      case 'video': return <FiVideo className={`${iconStyle} text-emerald-500`} />;
+      case 'audio': return <FiMusic className={`${iconStyle} text-violet-500`} />;
+      default: return <FiFileText className={`${iconStyle} text-slate-500`} />;
+    }
+  };
+
+  const getGradientClass = (type) => {
+    switch (type?.toLowerCase()) {
+      case 'blog': return 'from-indigo-500/15 to-purple-500/15';
+      case 'news': return 'from-rose-500/15 to-pink-500/15';
+      case 'video': return 'from-emerald-500/15 to-teal-500/15';
+      case 'audio': return 'from-violet-500/15 to-fuchsia-500/15';
+      default: return 'from-slate-500/15 to-gray-500/15';
+    }
   };
 
   const fetchContentDetails = async () => {
@@ -42,26 +61,75 @@ export const ContentDetail = () => {
       setError(null);
 
       const response = await axios.get(`${API_BASE_URL}/api/content/${id}`);
-      const raw = response.data?.data;
+      
+      // Handle different API response formats
+      let raw = response.data;
+      if (response.data && response.data.data) {
+        raw = response.data.data;
+      } else if (response.data && response.data.result) {
+        raw = response.data.result;
+      }
 
       if (!raw || typeof raw !== 'object') {
         throw new Error('Invalid content data received');
       }
 
+      console.log('Content data from backend:', raw);
+
+      // Extract files array or create from individual properties
+      let mediaFiles = [];
+      if (Array.isArray(raw.files)) {
+        mediaFiles = raw.files;
+      } else if (raw.url) {
+        // If no files array but we have a url, create a file object
+        mediaFiles = [{
+          url: raw.url,
+          fileType: raw.type,
+          // Add other properties that might be useful
+        }];
+      }
+
+      // Get primary media - use the first file or fallback to direct properties
+      let primaryMedia = null;
+      if (mediaFiles.length > 0) {
+        primaryMedia = mediaFiles[0];
+      } else if (raw.url) {
+        primaryMedia = { url: raw.url, fileType: raw.type };
+      }
+
+      // Handle writers data - could be array or single object
+      let writers = [];
+      if (Array.isArray(raw.writers)) {
+        writers = raw.writers;
+      } else if (raw.writer) {
+        // If single writer object, convert to array
+        writers = [raw.writer];
+      } else if (raw.author) {
+        // Support author field as well
+        writers = [{
+          name: typeof raw.author === 'string' ? raw.author : raw.author?.name,
+          photoUrl: raw.author?.photoUrl || raw.author?.image
+        }];
+      }
+
       const contentData = {
-        id: raw._id || id,
+        id: raw._id || raw.id || id,
         title: raw.title?.trim() || 'Untitled Content',
-        description: raw.description?.trim() || 'No description available',
-        type: ['blog', 'news', 'video', 'audio', 'image'].includes(raw.type)
-          ? raw.type
+        description: raw.description?.trim() || raw.content?.trim() || 'No description available',
+        type: ['blog', 'news', 'video', 'audio', 'image'].includes(raw.type?.toLowerCase())
+          ? raw.type.toLowerCase()
           : 'blog',
-        url: typeof raw.url === 'string' ? raw.url : null,
-        createdAt: raw.createdAt ? new Date(raw.createdAt) : new Date(),
+        url: primaryMedia?.url || raw.url || null,
+        fileType: primaryMedia?.fileType || raw.type || 'image',
+        createdAt: raw.createdAt || raw.date || raw.timestamp || new Date(),
         category: raw.category || null,
-        thumbnail:
-          typeof raw.thumbnail === 'string'
-            ? raw.thumbnail
-            : null
+        thumbnail: raw.thumbnail || raw.image || null,
+        writers: writers,
+        files: mediaFiles,
+        likes: raw.likes || raw.likeCount || 0,
+        youtubeUrl: raw.youtubeUrl || null,
+        // Add any additional fields that might be useful
+        ...raw
       };
 
       setContent(contentData);
@@ -92,15 +160,35 @@ export const ContentDetail = () => {
   };
 
   const getMediaUrl = (path) => {
-    if (!path || typeof path !== 'string') return null;
+    if (!path || typeof path !== 'string') {
+      console.log('Invalid path:', path);
+      return null;
+    }
 
+    // If it's already a full URL, return as is
     if (path.startsWith('http://') || path.startsWith('https://')) {
       return path;
     }
 
-    return path.startsWith('/')
-      ? `${API_BASE_URL}${path}`
-      : `${API_BASE_URL}/uploads/${path}`;
+    // Handle different path formats
+    let normalizedPath = path;
+    
+    // Remove any leading API path segments that might cause issues
+    if (normalizedPath.startsWith('/api/')) {
+      normalizedPath = normalizedPath.replace('/api/', '/');
+    }
+    
+    // Ensure the path starts with a slash but doesn't have double slashes
+    if (!normalizedPath.startsWith('/')) {
+      normalizedPath = '/' + normalizedPath;
+    }
+    
+    // Remove any double slashes that might occur
+    normalizedPath = normalizedPath.replace(/\/\/+/g, '/');
+    
+    // Construct the full URL
+    const baseUrl = API_BASE_URL.replace(/\/$/, ''); // Remove trailing slash if present
+    return `${baseUrl}${normalizedPath}`;
   };
 
   const formatContentDate = (date) => {
@@ -115,30 +203,107 @@ export const ContentDetail = () => {
     });
   };
 
-  const handleMediaError = (event) => {
-    event.target.style.display = 'none';
+  const handleImageError = (event, imageKey) => {
+    console.log(`Image failed to load: ${imageKey}`);
+    setImageErrors(prev => new Set(prev).add(imageKey));
+    
+    if (event.target) {
+      event.target.style.display = 'none';
+    }
+  };
+
+  const handleVideoPlay = () => {
+    setPlayingVideo(true);
+    const video = document.getElementById('content-video');
+    if (video) {
+      video.play().catch(e => console.log('Video play error:', e));
+    }
+  };
+
+  const handleVideoPause = () => {
+    setPlayingVideo(false);
+    const video = document.getElementById('content-video');
+    if (video) video.pause();
+  };
+
+  const handleLike = async () => {
+    try {
+      setLiked(!liked);
+      const newLikes = liked ? content.likes - 1 : content.likes + 1;
+      setContent({...content, likes: newLikes});
+      
+      await axios.post(`${API_BASE_URL}/api/content/${id}/like`, {
+        liked: !liked
+      });
+    } catch (error) {
+      console.error('Error updating like:', error);
+      setLiked(!liked);
+      setContent({...content, likes: content.likes});
+    }
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: content.title,
+          text: content.description,
+          url: window.location.href,
+        });
+      } catch (error) {
+        console.log('Sharing cancelled or failed', error);
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        alert('Link copied to clipboard!');
+      }).catch(err => {
+        console.error('Could not copy text: ', err);
+      });
+    }
+  };
+
+  const handleDownload = () => {
+    if (content.url) {
+      const mediaUrl = getMediaUrl(content.url);
+      const link = document.createElement('a');
+      link.href = mediaUrl;
+      link.download = content.title || 'download';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const handleYoutubeClick = () => {
+    if (content.youtubeUrl) {
+      window.open(content.youtubeUrl, '_blank');
+    }
   };
 
   useEffect(() => {
-    fetchContentDetails();
+    if (id) {
+      fetchContentDetails();
+    }
   }, [id]);
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <FiLoader className="animate-spin text-blue-500 text-4xl mb-4" />
-        <p className="text-gray-600">Loading content details...</p>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <FiLoader className="animate-spin text-blue-500 text-4xl mb-4 mx-auto" />
+          <p className="text-gray-600 text-xl">Loading content details...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-white rounded-lg shadow-md p-6 text-center">
-          <div className="text-red-500 mb-6">
-            <p className="mt-4 text-lg font-medium">{error}</p>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-red-50 flex items-center justify-center">
+        <div className="text-center p-8 bg-white rounded-2xl shadow-xl border border-rose-200 max-w-md">
+          <div className="text-rose-500 text-5xl mb-4">⚠️</div>
+          <p className="text-xl font-semibold text-rose-700 mb-2">Oops! Something went wrong</p>
+          <p className="text-rose-600 mb-6">{error}</p>
           <button
             onClick={() => navigate(-1)}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -152,102 +317,291 @@ export const ContentDetail = () => {
 
   if (!content) {
     return (
-      <div className="max-w-4xl mx-auto p-6 text-center">
-        <p className="text-lg text-gray-700">No content found</p>
-        <button
-          onClick={() => navigate(-1)}
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Back to Content
-        </button>
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-orange-50 flex items-center justify-center">
+        <div className="text-center p-8 bg-white rounded-2xl shadow-xl border border-amber-200">
+          <div className="text-amber-500 text-5xl mb-4">📭</div>
+          <p className="text-2xl font-bold text-amber-700 mb-2">No Content Found</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
+            Back to Content
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-6">
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center text-blue-600 hover:text-blue-800 mb-6 transition-colors"
-      >
-        <FiArrowLeft className="mr-2" />
-        Back to Content
-      </button>
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-fuchsia-50 to-pink-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 md:px-6">
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          onClick={() => navigate(-1)}
+          className="flex items-center text-blue-600 hover:text-blue-800 mb-8 transition-colors bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm"
+        >
+          <FiArrowLeft className="mr-2" />
+          Back to Content
+        </motion.button>
 
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="w-full">
-          {content.type === 'video' ? (
-            <div className="relative pt-[56.25%] bg-black">
-              <video
-                controls
-                className="absolute inset-0 w-full h-full object-contain"
-                src={getMediaUrl(content.url)}
-                onError={handleMediaError}
-                poster={content.thumbnail ? getMediaUrl(content.thumbnail) : undefined}
-                autoPlay
-                playsInline
-                muted
-              />
-            </div>
-          ) : content.type === 'audio' ? (
-            <div className="p-6 bg-gray-100">
-              <audio
-                controls
-                className="w-full"
-                src={getMediaUrl(content.url)}
-                onError={handleMediaError}
-                autoPlay
-              />
-            </div>
-          ) : content.url ? (
-            <div className="flex justify-center bg-gray-100 p-4 max-h-[70vh] min-h-[300px]">
-              <img
-                src={getMediaUrl(content.url)}
-                alt={content.title}
-                className="max-w-full max-h-full object-contain"
-                onError={handleMediaError}
-                loading="lazy"
-              />
-            </div>
-          ) : (
-            <div className="flex items-center justify-center bg-gray-100 p-8 min-h-[300px]">
-              <div className="text-center text-gray-500">
-                <FiImage className="w-12 h-12 mx-auto mb-4" />
-                <p>No media available</p>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className={`bg-gradient-to-br ${getGradientClass(content.type)} backdrop-blur-sm bg-white/90 rounded-3xl shadow-lg overflow-hidden border border-white/60`}
+        >
+          {/* Media Display */}
+          <div className="w-full">
+            {content.fileType === 'video' ? (
+              <div className="relative bg-gradient-to-br from-gray-900 to-black overflow-hidden group">
+                <div className="w-full h-96 relative">
+                  <video
+                    id="content-video"
+                    controls
+                    className="absolute inset-0 w-full h-full object-contain"
+                    src={getMediaUrl(content.url)}
+                    poster={content.thumbnail ? getMediaUrl(content.thumbnail) : undefined}
+                    playsInline
+                  />
+                  
+                  {!playingVideo && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-all duration-300">
+                      <motion.button
+                        className="bg-white/95 backdrop-blur-sm text-emerald-600 p-5 rounded-full shadow-2xl hover:bg-white transition-all"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleVideoPlay}
+                      >
+                        <FiPlay className="w-8 h-8 ml-1" />
+                      </motion.button>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="absolute top-4 right-4 bg-emerald-500 text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg">
+                  VIDEO
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        <div className="p-6">
-          <div className="flex items-center mb-4">
-            {getContentIcon(content.type)}
-            <h1 className="text-2xl font-bold text-gray-900">
-              {content.title}
-            </h1>
-          </div>
-
-          <div className="flex flex-wrap items-center text-gray-500 mb-6 gap-4">
-            <div className="flex items-center">
-              <FiCalendar className="mr-2" />
-              <span>{formatContentDate(content.createdAt)}</span>
-            </div>
-
-            {content.category && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-800">
-                {typeof content.category === 'object'
-                  ? content.category.name
-                  : content.category}
-              </span>
+            ) : content.fileType === 'audio' ? (
+              <div className="p-6 bg-gradient-to-br from-violet-400 to-fuchsia-500">
+                <div className="w-full h-64 relative flex items-center justify-center">
+                  {content.thumbnail && !imageErrors.has('thumbnail') && (
+                    <img
+                      src={getMediaUrl(content.thumbnail)}
+                      alt={content.title}
+                      className="absolute inset-0 w-full h-full object-cover opacity-30"
+                      onError={(e) => handleImageError(e, 'thumbnail')}
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-500/60 to-fuchsia-500/60 flex items-center justify-center">
+                    <motion.div 
+                      className="bg-white/95 p-6 rounded-full shadow-2xl"
+                      whileHover={{ scale: 1.05, rotate: 5 }}
+                    >
+                      <FiMusic className="text-4xl text-violet-600" />
+                    </motion.div>
+                  </div>
+                  <audio
+                    controls
+                    className="absolute bottom-4 left-4 right-4"
+                    src={getMediaUrl(content.url)}
+                  />
+                </div>
+                
+                <div className="absolute top-4 right-4 bg-violet-500 text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg">
+                  AUDIO
+                </div>
+              </div>
+            ) : content.url || content.thumbnail ? (
+              <div className="flex justify-center bg-gradient-to-br from-gray-100 to-gray-200 p-4 max-h-[70vh] min-h-[400px]">
+                {(content.url && !imageErrors.has('main-content')) && (
+                  <img
+                    src={getMediaUrl(content.url)}
+                    alt={content.title}
+                    className="max-w-full max-h-full object-contain"
+                    onError={(e) => handleImageError(e, 'main-content')}
+                    loading="lazy"
+                  />
+                )}
+                {(content.thumbnail && !content.url && !imageErrors.has('thumbnail')) && (
+                  <img
+                    src={getMediaUrl(content.thumbnail)}
+                    alt={content.title}
+                    className="max-w-full max-h-full object-contain"
+                    onError={(e) => handleImageError(e, 'thumbnail')}
+                    loading="lazy"
+                  />
+                )}
+                
+                <div className={`absolute top-4 right-4 ${
+                  content.type === 'blog' ? 'bg-indigo-500' : 
+                  content.type === 'news' ? 'bg-rose-500' : 'bg-slate-500'
+                } text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg uppercase`}>
+                  {content.type || 'CONTENT'}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 p-8 min-h-[400px]">
+                <div className="text-center text-gray-500">
+                  <FiImage className="w-16 h-16 mx-auto mb-4" />
+                  <p className="text-lg">No media available</p>
+                </div>
+                
+                <div className={`absolute top-4 right-4 ${
+                  content.type === 'blog' ? 'bg-indigo-500' : 
+                  content.type === 'news' ? 'bg-rose-500' : 'bg-slate-500'
+                } text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg uppercase`}>
+                  {content.type || 'CONTENT'}
+                </div>
+              </div>
             )}
           </div>
 
-          <div className="prose max-w-none">
-            <p className="whitespace-pre-line text-gray-700">
-              {content.description}
-            </p>
+          {/* Content Details */}
+          <div className="p-6 md:p-8">
+            <div className="flex items-start mb-6">
+              {getContentIcon(content.type)}
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
+                  {content.title}
+                </h1>
+                
+                <div className="flex flex-wrap items-center text-gray-500 gap-4 mb-4">
+                  <div className="flex items-center bg-gray-100 px-3 py-1 rounded-full">
+                    <FiCalendar className="mr-2" />
+                    <span>{formatContentDate(content.createdAt)}</span>
+                  </div>
+
+                  {content.category && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-200 text-gray-800">
+                      {typeof content.category === 'object'
+                        ? content.category.name
+                        : content.category}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-3 mb-6">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleLike}
+                className={`flex items-center px-4 py-2 rounded-full ${liked ? 'bg-red-500 text-white' : 'bg-white text-gray-700'} shadow-sm border border-gray-200 transition-colors`}
+              >
+                <FiHeart className={`mr-2 ${liked ? 'fill-current' : ''}`} />
+                <span>{content.likes || 0}</span>
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleShare}
+                className="flex items-center px-4 py-2 rounded-full bg-white text-gray-700 shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                <FiShare2 className="mr-2" />
+                Share
+              </motion.button>
+
+              {content.url && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleDownload}
+                  className="flex items-center px-4 py-2 rounded-full bg-white text-gray-700 shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  <FiDownload className="mr-2" />
+                  Download
+                </motion.button>
+              )}
+
+              {content.youtubeUrl && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleYoutubeClick}
+                  className="flex items-center px-4 py-2 rounded-full bg-red-600 text-white shadow-sm border border-red-700 hover:bg-red-700 transition-colors"
+                >
+                  <FiYoutube className="mr-2" />
+                  YouTube
+                </motion.button>
+              )}
+            </div>
+
+            {/* Writers Section */}
+            {content.writers && content.writers.length > 0 && (
+              <div className="mb-6 p-4 bg-white/50 rounded-xl border border-white/70">
+                <p className="text-sm font-medium text-gray-500 mb-3">लेखक / Writers:</p>
+                <div className="flex flex-wrap gap-3">
+                  {content.writers.map((writer, index) => (
+                    <div key={index} className="flex items-center bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100">
+                      {writer.photoUrl && !imageErrors.has(`writer-${index}`) ? (
+                        <img
+                          src={getMediaUrl(writer.photoUrl)}
+                          alt={writer.name}
+                          className="w-10 h-10 rounded-full object-cover mr-3 border border-gray-300"
+                          onError={(e) => handleImageError(e, `writer-${index}`)}
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gray-300 mr-3 flex items-center justify-center text-gray-600 text-sm font-medium">
+                          {writer.name ? writer.name.charAt(0).toUpperCase() : 'W'}
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {writer.name || 'अज्ञात लेखक / Unknown Writer'}
+                        </p>
+                        {writer.role && (
+                          <p className="text-xs text-gray-500">{writer.role}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Description */}
+            <div className="prose max-w-none mb-6">
+              <div className="text-gray-700 whitespace-pre-line leading-relaxed text-lg">
+                {content.description}
+              </div>
+            </div>
+
+            {/* Additional Media Files */}
+            {content.files && content.files.length > 1 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Additional Media</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {content.files.slice(1).map((file, index) => (
+                    <div key={index} className="rounded-lg overflow-hidden border border-gray-200">
+                      {file.fileType === 'image' && !imageErrors.has(`file-${index}`) ? (
+                        <img
+                          src={getMediaUrl(file.url)}
+                          alt={`Additional media ${index + 1}`}
+                          className="w-full h-32 object-cover"
+                          onError={(e) => handleImageError(e, `file-${index}`)}
+                        />
+                      ) : file.fileType === 'video' ? (
+                        <div className="relative h-32 bg-black flex items-center justify-center">
+                          <FiVideo className="text-white text-2xl" />
+                        </div>
+                      ) : (
+                        <div className="h-32 bg-gray-100 flex items-center justify-center">
+                          <FiFileText className="text-gray-500 text-2xl" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

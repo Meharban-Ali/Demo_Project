@@ -18,7 +18,7 @@ const app = express();
 // ✅ CORS Configuration
 
 const allowedOrigins = [
-  'http://localhost:5174',        // dev mode
+  'http://localhost:5173',        // dev mode
   'https://raviopedia.in',        // ✅ production domain
   'https://www.raviopedia.in'     // ✅ with www
 ];

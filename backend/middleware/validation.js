@@ -14,7 +14,6 @@ const errorMessages = {
     return types[type] || 'अमान्य फाइल प्रकार';
   },
   FILE_SIZE: 'फाइल का आकार 100MB से अधिक नहीं होना चाहिए',
-  FILE_REQUIRED: (type) => `${type} content के लिए फाइल आवश्यक है`,
   INVALID_CONTENT_TYPE: 'अमान्य कंटेंट प्रकार'
 };
 
@@ -91,19 +90,7 @@ exports.validateContent = [
     const fileArray = req.files?.files;
     const file = Array.isArray(fileArray) && fileArray.length > 0 ? fileArray[0] : null;
 
-    // Case 1: New content (non-blog) requires at least one file
-    if (!req.body.id && !file && contentType !== 'blog') {
-      return res.status(400).json({
-        success: false,
-        error: {
-          message: errorMessages.FILE_REQUIRED(contentType),
-          param: 'files',
-          location: 'body'
-        }
-      });
-    }
-
-    // Case 2: Validate file if present
+    // 🔹 Case: File is optional, but if provided then validate it
     if (file) {
       const ext = path.extname(file.originalname).toLowerCase();
       const mime = file.mimetype;

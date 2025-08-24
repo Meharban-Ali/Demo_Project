@@ -54,7 +54,7 @@ export const ContentManager = () => {
         const response = await fetch(`${API_BASE_URL}/api/categories`);
         if (!response.ok) throw new Error('Failed to fetch categories');
         const data = await response.json();
-        console.log('Categories:', data); // Log categories for debugging
+        console.log('Categories:', data);
         setCategories(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Error fetching categories:', err);
@@ -73,6 +73,7 @@ export const ContentManager = () => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         const contentData = data.data || data.content || (Array.isArray(data) ? data : []);
+        console.log('Fetched content:', contentData);
         setContent(Array.isArray(contentData) ? contentData : []);
       } catch (err) {
         console.error('Error fetching content:', err);
@@ -89,23 +90,23 @@ export const ContentManager = () => {
 
     const validTypes = {
       blog: {
-        mime: ['image/jpeg', 'image/png', 'image/webp'],
-        ext: ['jpg', 'jpeg', 'png', 'webp'],
+        mime: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+        ext: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
         maxSize: 100 * 1024 * 1024,
       },
       news: {
-        mime: ['image/jpeg', 'image/png', 'image/webp'],
-        ext: ['jpg', 'jpeg', 'png', 'webp'],
+        mime: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+        ext: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
         maxSize: 100 * 1024 * 1024,
       },
       video: {
-        mime: ['video/mp4', 'video/webm'],
-        ext: ['mp4', 'webm'],
+        mime: ['video/mp4', 'video/webm', 'video/quicktime'],
+        ext: ['mp4', 'webm', 'mov'],
         maxSize: 100 * 1024 * 1024,
       },
       audio: {
-        mime: ['audio/mpeg', 'audio/wav'],
-        ext: ['mp3', 'wav'],
+        mime: ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4'],
+        ext: ['mp3', 'wav', 'ogg', 'm4a'],
         maxSize: 100 * 1024 * 1024,
       },
     };
@@ -130,35 +131,33 @@ export const ContentManager = () => {
 
   const validateFiles = (files, type) => {
     if (!files || files.length === 0) {
-      return 'कृपया कम से कम एक फाइल चुनें | Please select at least one file';
-    }
-
-    if (files.length > 5) {
-      return 'आप अधिकतम 5 फाइलें अपलोड कर सकते हैं | You can upload maximum 5 files';
+      return type === 'news' || type === 'video' || type === 'audio'
+        ? `कृपया कम से कम एक फाइल चुनें | Please select at least one file for ${type} content`
+        : '';
     }
 
     const validTypes = {
       blog: {
-        mime: ['image/jpeg', 'image/png', 'image/webp'],
-        ext: ['jpg', 'jpeg', 'png', 'webp'],
+        mime: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+        ext: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
         maxSize: 100 * 1024 * 1024,
         maxCount: 5,
       },
       news: {
-        mime: ['image/jpeg', 'image/png', 'image/webp'],
-        ext: ['jpg', 'jpeg', 'png', 'webp'],
+        mime: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+        ext: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
         maxSize: 100 * 1024 * 1024,
         maxCount: 5,
       },
       video: {
-        mime: ['video/mp4', 'video/webm'],
-        ext: ['mp4', 'webm'],
+        mime: ['video/mp4', 'video/webm', 'video/quicktime'],
+        ext: ['mp4', 'webm', 'mov'],
         maxSize: 100 * 1024 * 1024,
         maxCount: 1,
       },
       audio: {
-        mime: ['audio/mpeg', 'audio/wav'],
-        ext: ['mp3', 'wav'],
+        mime: ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4'],
+        ext: ['mp3', 'wav', 'ogg', 'm4a'],
         maxSize: 100 * 1024 * 1024,
         maxCount: 1,
       },
@@ -189,6 +188,7 @@ export const ContentManager = () => {
           setFileError(error);
           return;
         }
+        console.log('Selected files:', fileList.map(f => ({ name: f.name, type: f.type, size: f.size })));
         setFormData(prev => ({
           ...prev,
           files: fileList,
@@ -200,10 +200,10 @@ export const ContentManager = () => {
         if (indexMatch) {
           const index = parseInt(indexMatch[1]);
           const updatedWriters = [...formData.writers];
-          if (!updatedWriters[index]) updatedWriters[index] = { name: '', role: '' };
+          if (!updatedWriters[index]) updatedWriters[index] = { name: '', role: '', photoFile: null, photoUrl: '' };
 
           const photoFile = files[0];
-          const error = validateFile(photoFile, 'blog'); // Use 'blog' validation for writer photos
+          const error = validateFile(photoFile, 'blog');
           if (error) {
             setFileError(error);
             return;
@@ -211,6 +211,7 @@ export const ContentManager = () => {
           updatedWriters[index].photoFile = photoFile;
           updatedWriters[index].photoUrl = photoFile ? URL.createObjectURL(photoFile) : '';
 
+          console.log('Selected writer photo:', { index, name: photoFile?.name, type: photoFile?.type, size: photoFile?.size });
           setFormData(prev => ({
             ...prev,
             writers: updatedWriters,
@@ -230,26 +231,6 @@ export const ContentManager = () => {
     const updatedWriters = [...formData.writers];
     updatedWriters[index] = { ...updatedWriters[index], [field]: value };
     setFormData(prev => ({ ...prev, writers: updatedWriters }));
-  };
-
-  const handleWriterFileChange = (index, e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const error = validateFile(file, 'blog'); // Use 'blog' validation for writer photos
-      if (error) {
-        setFileError(`Writer ${index + 1} image: ${error}`);
-        return;
-      }
-
-      const updatedWriters = [...formData.writers];
-      updatedWriters[index] = {
-        ...updatedWriters[index],
-        photoFile: file,
-        photoUrl: URL.createObjectURL(file),
-      };
-      setFormData(prev => ({ ...prev, writers: updatedWriters }));
-      setFileError('');
-    }
   };
 
   const addWriter = () => {
@@ -299,58 +280,59 @@ export const ContentManager = () => {
       return;
     }
 
-    const isEditMode = !!editingId;
-    const requiresNewFile = !isEditMode && formData.type !== 'blog';
-    const hasExistingFiles = formData.fileUrls.length > 0;
-    const hasNewFiles = formData.files.length > 0;
+    if ((formData.type === 'news' || formData.type === 'video' || formData.type === 'audio') && formData.files.length === 0) {
+      setFileError(`कृपया ${formData.type} के लिए कम से कम एक फाइल चुनें | Please select at least one file for ${formData.type} content`);
+      return;
+    }
 
-    if (requiresNewFile && !hasNewFiles) {
-      let fileTypeName = 'फाइल | file';
-      switch (formData.type) {
-        case 'blog':
-        case 'news':
-          fileTypeName = 'इमेज | image';
-          break;
-        case 'video':
-          fileTypeName = 'वीडियो | video';
-          break;
-        case 'audio':
-          fileTypeName = 'ऑडियो | audio';
-          break;
+    if (!editingId && formData.writers.length === 0) {
+      setFileError('कृपया कम से कम एक लेखक जोड़ें | Please add at least one writer');
+      return;
+    }
+
+    for (const writer of formData.writers) {
+      if (!writer.name.trim()) {
+        setFileError('सभी लेखकों के लिए नाम आवश्यक है | Name is required for all writers');
+        return;
       }
-      setFileError(`कृपया कम से कम एक ${fileTypeName} चुनें | Please select at least one ${fileTypeName.split('|')[1].trim()}`);
-      return;
     }
 
-    if (isEditMode && !hasExistingFiles && !hasNewFiles && formData.type !== 'blog') {
-      setFileError('कृपया फाइल अपडेट करें या मौजूदा फाइल को रखें | Please update file or keep existing file');
-      return;
-    }
-
+    console.log('FormData before submission:', {
+      ...formData,
+      files: formData.files.map(f => ({ name: f.name, type: f.type, size: f.size })),
+      writers: formData.writers.map(w => ({
+        ...w,
+        photoFile: w.photoFile ? w.photoFile.name : null,
+      })),
+    });
     setShowUploadConfirmation(true);
   };
 
-  const getFullUrl = (url) => url ? (url.startsWith('http') ? url : `${API_BASE_URL}${url.replace(/^\/api\/uploads/, '/uploads')}`) : '';
+  const getFullUrl = (url) => {
+    if (!url) return '/fallback-image.jpg';
+    return url.startsWith('http') ? url : `${API_BASE_URL}${url.replace(/^\/api\/uploads/, '/uploads')}`;
+  };
 
   const handleEdit = (item) => {
     if (!item || typeof item !== 'object') {
-      console.error('Invalid item provided for editing');
+      console.error('Invalid item provided for editing:', item);
       return;
     }
 
-    const mediaUrls = Array.isArray(item.fileUrls) && item.fileUrls.length > 0
-      ? item.fileUrls
-      : item.files && Array.isArray(item.files)
-        ? item.files.map(f => f.url)
-        : [item.url].filter(Boolean);
+    const mediaUrls = Array.isArray(item.files) && item.files.length > 0
+      ? item.files.map(f => f?.url).filter(Boolean)
+      : [item.url].filter(Boolean);
 
     const fullMediaUrls = mediaUrls.map(getFullUrl);
 
-    const writers = (item.writers || []).map(writer => ({
-      ...writer,
-      photoUrl: getFullUrl(writer.photoUrl),
+    const writers = Array.isArray(item.writers) ? item.writers.map(writer => ({
+      name: writer.name || '',
+      role: writer.role || '',
+      photoUrl: writer.photoUrl ? getFullUrl(writer.photoUrl) : '',
       photoFile: null,
-    }));
+    })) : [];
+
+    console.log('Editing item:', { mediaUrls, fullMediaUrls, writers });
 
     setEditingId(item._id || item.id);
     setFormData({
@@ -384,7 +366,7 @@ export const ContentManager = () => {
         method: 'DELETE',
       });
 
-      if (!response.ok) throw new Error('Failed to delete content');
+      if (!response.ok) throw new Error(`Failed to delete content: ${response.status}`);
 
       setContent(prev => prev.filter(item => item._id !== itemToDelete));
       showSuccess('Content deleted successfully');
@@ -413,6 +395,15 @@ export const ContentManager = () => {
     setIsLoading(true);
     setFileError('');
 
+    console.log('Confirm upload started, formData:', {
+      ...formData,
+      files: formData.files.map(f => ({ name: f.name, type: f.type, size: f.size })),
+      writers: formData.writers.map(w => ({
+        ...w,
+        photoFile: w.photoFile ? w.photoFile.name : null,
+      })),
+    });
+
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
 
@@ -425,24 +416,37 @@ export const ContentManager = () => {
       form.append('category', formData.category);
       form.append('type', formData.type);
 
-      // Append files (try both 'files' and 'files[]' to test server compatibility)
       if (formData.files && formData.files.length > 0) {
         formData.files.forEach(file => {
           if (file instanceof File) {
-            form.append('files', file); // Primary approach
-            form.append('files[]', file); // Alternative for servers expecting 'files[]'
+            form.append('files[]', file);
             console.log('Appending file:', file.name, 'Type:', file.type, 'Size:', file.size);
           }
         });
+      } else if (formData.type === 'news' || formData.type === 'video' || formData.type === 'audio') {
+        throw new Error(`कृपया ${formData.type} के लिए कम से कम एक फाइल चुनें | Please select at least one file for ${formData.type} content`);
       }
 
-      // Send writers as JSON string
-      const writerMeta = formData.writers.map(writer => ({
-        name: writer.name || '',
-        role: writer.role || '',
-        photoUrl: writer.photoFile ? '' : (writer.photoUrl || '').replace(API_BASE_URL, '').replace('/uploads', '/api/uploads'),
-      }));
-      form.append('writers', JSON.stringify(writerMeta));
+      const writersData = formData.writers.map((writer, index) => {
+        if (!writer.name.trim()) {
+          throw new Error('Writer name cannot be empty');
+        }
+        return {
+          name: writer.name.trim(),
+          role: writer.role.trim() || '',
+          photoUrl: writer.photoFile ? '' : (writer.photoUrl || ''),
+          photo: writer.photoFile instanceof File ? `writers[${index}][photo]` : null,
+        };
+      });
+
+      if (writersData.length === 0 && !isEditMode) {
+        throw new Error('At least one writer is required for new content');
+      }
+
+      console.log('Writers data to send:', writersData);
+      const writersJson = JSON.stringify(writersData);
+      console.log('Writers JSON string:', writersJson);
+      form.append('writers', writersJson);
 
       formData.writers.forEach((writer, index) => {
         if (writer.photoFile instanceof File) {
@@ -452,10 +456,12 @@ export const ContentManager = () => {
       });
 
       if (isEditMode && formData.fileUrls.length > 0) {
-        form.append('existingFileUrls', JSON.stringify(formData.fileUrls.map(url => url.replace(API_BASE_URL, '').replace('/uploads', '/api/uploads'))));
+        const existingUrls = formData.fileUrls.map(url => url.replace(API_BASE_URL, '').replace('/uploads', '/api/uploads'));
+        console.log('Existing file URLs:', existingUrls);
+        form.append('existingFileUrls', JSON.stringify(existingUrls));
       }
 
-      // Log FormData entries for debugging
+      console.log('FormData entries:');
       for (let [key, value] of form.entries()) {
         console.log(`${key}: ${value instanceof File ? `${value.name} (${value.type}, ${value.size} bytes)` : value}`);
       }
@@ -469,7 +475,7 @@ export const ContentManager = () => {
             signal,
           }
         ),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Request timed out')), 60000)), // 60 seconds timeout
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Request timed out')), 120000)),
       ]);
 
       if (!response.ok) {
@@ -478,7 +484,7 @@ export const ContentManager = () => {
         if (contentType && contentType.includes('application/json')) {
           const errorData = await response.json();
           console.error('Full backend error:', JSON.stringify(errorData, null, 2));
-          errorMessage = errorData.error?.message || errorData.message || JSON.stringify(errorData.error) || 'Upload failed';
+          errorMessage = errorData.message || errorData.error?.message || 'Upload failed';
         } else {
           errorMessage = await response.text() || 'Upload failed';
           console.error('Backend text error:', errorMessage);
@@ -487,6 +493,7 @@ export const ContentManager = () => {
       }
 
       const result = await response.json();
+      console.log('Upload response:', result);
       showSuccess(isEditMode ? 'Content updated successfully' : 'Content uploaded successfully');
       setShowModal(false);
       resetForm();
@@ -495,17 +502,16 @@ export const ContentManager = () => {
       if (!fetchContentResponse.ok) throw new Error(`HTTP error! status: ${fetchContentResponse.status}`);
       const data = await fetchContentResponse.json();
       const contentData = data.data || data.content || (Array.isArray(data) ? data : []);
+      console.log('Refreshed content:', contentData);
       setContent(Array.isArray(contentData) ? contentData : []);
 
     } catch (error) {
+      console.error('Upload error:', error);
       if (error.message === 'Request timed out') {
-        console.error('Fetch timed out');
-        setFileError('Request timed out. Please try again.');
+        setFileError('Request timed out. Please try again or check server status.');
       } else if (error.name === 'AbortError') {
-        console.error('Request aborted');
         setFileError('Upload cancelled.');
       } else {
-        console.error('Upload error:', error.message);
         setFileError(error.message || 'Upload failed. Please try again.');
       }
     } finally {
@@ -551,14 +557,13 @@ export const ContentManager = () => {
 
   const getMediaUrls = (item) => {
     let urls = [];
-    if (Array.isArray(item.fileUrls) && item.fileUrls.length > 0) {
-      urls = item.fileUrls;
-    } else if (Array.isArray(item.files) && item.files.length > 0) {
-      urls = item.files.map(f => f.url).filter(Boolean);
+    if (Array.isArray(item.files) && item.files.length > 0) {
+      urls = item.files.map(f => f?.url).filter(Boolean);
     } else if (item.url) {
       urls = [item.url];
     }
-    return urls.map(getFullUrl);
+    console.log('Media URLs for item', item._id, ':', urls);
+    return urls.length > 0 ? urls.map(url => getFullUrl(url)) : ['/fallback-image.jpg'];
   };
 
   return (
@@ -647,6 +652,7 @@ export const ContentManager = () => {
             ) : (
               filteredContent.map((item) => {
                 const mediaUrls = getMediaUrls(item);
+                console.log('Item writers:', item.writers, 'Length:', item.writers?.length || 0);
                 return (
                   <motion.div
                     key={item._id || item.id}
@@ -655,16 +661,18 @@ export const ContentManager = () => {
                     whileTap={{ scale: 0.97 }}
                   >
                     <div className="relative">
-                      {mediaUrls.length > 0 && (
+                      {mediaUrls.length > 0 && mediaUrls[0] !== '/fallback-image.jpg' ? (
                         <div className="h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
                           {item.type === 'video' ? (
                             <video className="w-full h-full object-cover" controls>
                               <source src={mediaUrls[0]} type="video/mp4" />
+                              Your browser does not support the video tag.
                             </video>
                           ) : item.type === 'audio' ? (
                             <div className="w-full p-4">
                               <audio controls className="w-full">
                                 <source src={mediaUrls[0]} type="audio/mpeg" />
+                                Your browser does not support the audio element.
                               </audio>
                             </div>
                           ) : (
@@ -675,11 +683,22 @@ export const ContentManager = () => {
                                   src={url}
                                   alt={`${item.title} ${index + 1}`}
                                   className="w-40 h-40 object-cover rounded"
-                                  onError={(e) => { e.target.src = '/fallback-image.jpg'; console.error('Image load error:', url); }}
+                                  onError={(e) => {
+                                    e.target.src = '/fallback-image.jpg';
+                                    console.error('Image load error:', url);
+                                  }}
                                 />
                               ))}
                             </div>
                           )}
+                        </div>
+                      ) : (
+                        <div className="h-48 bg-gray-100 flex items-center justify-center">
+                          <img
+                            src="/fallback-image.jpg"
+                            alt="No media available"
+                            className="w-40 h-40 object-cover rounded"
+                          />
                         </div>
                       )}
                     </div>
@@ -689,27 +708,53 @@ export const ContentManager = () => {
                         <span className="text-blue-600 mr-2">
                           {getIconForType(item.type)}
                         </span>
-                        <h3 className="text-lg font-semibold text-gray-800 truncate">{item.title}</h3>
+                        <h3 className="text-lg font-semibold text-gray-800 truncate">{item.title || 'Untitled'}</h3>
                       </div>
-                      <p className="text-sm text-gray-600 line-clamp-2">{item.description}</p>
+                      <p className="text-sm text-gray-600 line-clamp-2">{item.description || 'No description'}</p>
                       {item.category && (
                         <span className="inline-block mt-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
                           {typeof item.category === 'object' ? item.category.name : item.category}
                         </span>
                       )}
-                      {item.writers && item.writers.length > 0 && (
-                        <div className="mt-2">
-                          <p className="text-xs text-gray-500 mb-1">Writers:</p>
-                          <div className="flex flex-wrap gap-1">
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">लेखक / Writers:</p>
+                        {Array.isArray(item.writers) && item.writers.length > 0 ? (
+                          <div className="flex flex-wrap gap-3">
                             {item.writers.map((writer, index) => (
-                              <div key={index} className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full flex items-center gap-1">
-                                {writer.photoUrl && <img src={getFullUrl(writer.photoUrl)} alt={writer.name} className="w-4 h-4 rounded-full object-cover" onError={(e) => e.target.style.display = 'none'} />}
-                                {writer.name}
+                              <div
+                                key={index}
+                                className="flex items-center bg-gray-100 px-3 py-2 rounded-lg shadow-sm"
+                              >
+                                {writer.photoUrl ? (
+                                  <img
+                                    src={getFullUrl(writer.photoUrl)}
+                                    alt={writer.name || `Writer ${index + 1}`}
+                                    className="w-8 h-8 rounded-full object-cover mr-2 border border-gray-300"
+                                    onError={(e) => {
+                                      e.target.src = '/fallback-image.jpg';
+                                      console.error('Writer photo load error:', writer.photoUrl);
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-full bg-gray-300 mr-2 flex items-center justify-center text-gray-600 text-xs">
+                                    {writer.name ? writer.name[0] : 'W'}
+                                  </div>
+                                )}
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-800">
+                                    {writer.name || 'अज्ञात लेखक / Unknown Writer'}
+                                  </p>
+                                  {writer.role && (
+                                    <p className="text-xs text-gray-500">{writer.role}</p>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>
-                        </div>
-                      )}
+                        ) : (
+                          <p className="text-sm text-gray-500">No writers assigned</p>
+                        )}
+                      </div>
                     </div>
 
                     <div className="absolute top-2 right-2 flex space-x-2">
@@ -828,10 +873,10 @@ export const ContentManager = () => {
                       onChange={handleInputChange}
                       accept={
                         formData.type === 'video'
-                          ? 'video/mp4,video/webm'
+                          ? 'video/mp4,video/webm,video/quicktime'
                           : formData.type === 'audio'
-                          ? 'audio/mpeg,audio/mp3,audio/wav'
-                          : 'image/jpeg,image/png,image/webp'
+                          ? 'audio/mpeg,audio/wav,audio/ogg,audio/mp4'
+                          : 'image/jpeg,image/png,image/webp,image/gif'
                       }
                       multiple={formData.type === 'blog' || formData.type === 'news'}
                       className="hidden"
@@ -847,10 +892,12 @@ export const ContentManager = () => {
                     {formData.type === 'video' ? (
                       <video controls className="w-full mt-2 rounded" style={{ maxHeight: '150px' }}>
                         <source src={formData.fileUrls[0]} type="video/mp4" />
+                        Your browser does not support the video tag.
                       </video>
                     ) : formData.type === 'audio' ? (
                       <audio controls className="w-full mt-2">
                         <source src={formData.fileUrls[0]} type="audio/mpeg" />
+                        Your browser does not support the audio element.
                       </audio>
                     ) : (
                       <div className="image-preview-section mt-4 p-2 border rounded bg-gray-50 flex overflow-x-auto gap-2">
@@ -860,7 +907,10 @@ export const ContentManager = () => {
                             src={url}
                             alt={`Preview ${index + 1}`}
                             className="w-24 h-24 object-cover rounded"
-                            onError={(e) => { e.target.src = '/fallback-image.jpg'; console.error('Preview load error:', url); }}
+                            onError={(e) => {
+                              e.target.src = '/fallback-image.jpg';
+                              console.error('Preview load error:', url);
+                            }}
                           />
                         ))}
                       </div>
@@ -869,16 +919,16 @@ export const ContentManager = () => {
                 )}
                 <p className="text-xs text-gray-500 mt-1">
                   {formData.type === 'video'
-                    ? 'Allowed: MP4, WEBM (Max 100MB)'
+                    ? 'Allowed: MP4, WEBM, MOV (Max 100MB)'
                     : formData.type === 'audio'
-                    ? 'Allowed: MP3, WAV (Max 100MB)'
-                    : 'Allowed: JPG, PNG, WEBP (Max 100MB, up to 5 images)'}
+                    ? 'Allowed: MP3, WAV, OGG, M4A (Max 100MB)'
+                    : 'Allowed: JPG, PNG, WEBP, GIF (Max 100MB, up to 5 images)'}
                 </p>
               </div>
 
               <div className="mb-4">
                 <div className="flex justify-between items-center mb-2">
-                  <label className="block text-gray-700">Writers</label>
+                  <label className="block text-gray-700">लेखक / Writers</label>
                   {formData.writers.length < 4 && (
                     <button
                       type="button"
@@ -911,6 +961,7 @@ export const ContentManager = () => {
                         onChange={(e) => handleWriterChange(index, 'name', e.target.value)}
                         className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                         placeholder="Writer name"
+                        required
                         disabled={isUploading}
                       />
                     </div>
@@ -937,9 +988,10 @@ export const ContentManager = () => {
                           </span>
                           <input
                             type="file"
-                            onChange={(e) => handleWriterFileChange(index, e)}
+                            name={`writers[${index}][photo]`}
+                            onChange={handleInputChange}
                             className="hidden"
-                            accept="image/jpeg,image/png,image/webp"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
                             disabled={isUploading}
                           />
                         </label>
@@ -950,7 +1002,10 @@ export const ContentManager = () => {
                             src={writer.photoUrl}
                             alt="Writer preview"
                             className="w-16 h-16 object-cover rounded-full border"
-                            onError={(e) => { e.target.src = '/fallback-image.jpg'; console.error('Writer photo load error:', writer.photoUrl); }}
+                            onError={(e) => {
+                              e.target.src = '/fallback-image.jpg';
+                              console.error('Writer photo load error:', writer.photoUrl);
+                            }}
                           />
                         </div>
                       )}
