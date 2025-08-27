@@ -14,10 +14,10 @@ export const Home = () => {
   return (
     <div>
       
+        <ModernCategoriesComponent/>
         <Slider/>
         <ContentViewer/>
         <NewsSlider/>
-        <ModernCategoriesComponent/>
         <LiveScoreWeatherWidget/>       
     </div>
   )
