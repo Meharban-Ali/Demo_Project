@@ -23,6 +23,9 @@ export const PodcastPage = () => {
   const [volume, setVolume] = useState(80);
   const [showPlayer, setShowPlayer] = useState(false);
   const [likedPodcasts, setLikedPodcasts] = useState(new Set());
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [subscribeMessage, setSubscribeMessage] = useState('');
   
   const audioRef = useRef(null);
   const itemsPerPage = 10;
@@ -93,6 +96,35 @@ export const PodcastPage = () => {
     setFilteredPodcasts(results);
     setCurrentPage(1); // Reset to first page when filters change
   }, [searchTerm, selectedCategory, podcasts]);
+
+  // Handle newsletter subscription
+  const handleSubscribe = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      const response = await fetch('https://formspree.io/f/xblgqdkp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+      
+      if (response.ok) {
+        setSubscribeMessage('सदस्यता के लिए धन्यवाद! आपको जल्द ही अपडेट मिलने लगेंगे।');
+        setEmail('');
+      } else {
+        setSubscribeMessage('कुछ गलत हो गया। कृपया बाद में पुनः प्रयास करें।');
+      }
+    } catch (error) {
+      console.error('Subscription error:', error);
+      setSubscribeMessage('कनेक्शन त्रुटि। कृपया बाद में पुनः प्रयास करें।');
+    } finally {
+      setIsSubmitting(false);
+      setTimeout(() => setSubscribeMessage(''), 5000);
+    }
+  };
 
   // Get current page items
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -681,16 +713,34 @@ export const PodcastPage = () => {
           <p className="text-lg md:text-xl max-w-2xl mx-auto mb-8 text-gray-600">
             नए एपिसोड की सूचना सीधे अपने इनबॉक्स में प्राप्त करें। किसी भी प्लेटफॉर्म पर हमारे पॉडकास्ट सुनें।
           </p>
-          <div className="max-w-md mx-auto flex flex-col sm:flex-row gap-2">
+          
+          <form onSubmit={handleSubscribe} className="max-w-md mx-auto flex flex-col sm:flex-row gap-2">
             <input 
               type="email" 
               placeholder="आपका ईमेल पता" 
               className="flex-grow px-4 py-3 rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 shadow-sm"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
             />
-            <button className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-3 rounded-full font-semibold whitespace-nowrap transition-colors shadow-md">
-              सब्सक्राइब करें
+            <button 
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-3 rounded-full font-semibold whitespace-nowrap transition-colors shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'सब्मिट कर रहे हैं...' : 'सब्सक्राइब करें'}
             </button>
-          </div>
+          </form>
+          
+          {subscribeMessage && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 p-3 bg-white/80 backdrop-blur-sm rounded-lg text-green-600 max-w-md mx-auto"
+            >
+              {subscribeMessage}
+            </motion.div>
+          )}
         </div>
       </motion.div>
     </div>
